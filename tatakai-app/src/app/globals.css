@@ -41,6 +41,9 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  
+  /* Custom mobile breakpoint */
+  --breakpoint-xs: 475px;
 }
 
 :root {
@@ -175,4 +178,41 @@
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
   line-clamp: 3;
+}
+
+/* Mobile navigation improvements */
+@media (max-width: 475px) {
+  .mobile-sheet {
+    width: 90vw;
+  }
+}
+
+/* Theme transition improvements */
+html {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Enhanced mobile touch targets */
+@media (max-width: 768px) {
+  .mobile-touch-target {
+    min-height: 48px;
+    min-width: 48px;
+  }
+  
+  .mobile-menu-item {
+    min-height: 48px;
+    padding: 12px 16px;
+  }
+}
+
+/* Better mobile sheet backdrop */
+@media (max-width: 640px) {
+  [data-slot="sheet-overlay"] {
+    backdrop-filter: blur(8px);
+    background: rgba(0, 0, 0, 0.6);
+  }
+  
+  .dark [data-slot="sheet-overlay"] {
+    background: rgba(0, 0, 0, 0.7);
+  }
 }
