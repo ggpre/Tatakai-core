@@ -1,6 +1,5 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   images: {
     remotePatterns: [
       {
@@ -8,16 +7,16 @@ const nextConfig: NextConfig = {
         hostname: 'cdn.noitatnemucod.net',
       },
       {
-        protocol: 'http',
-        hostname: 'cdn.noitatnemucod.net',
+        protocol: 'https',
+        hostname: 'gogocdn.net',
+      },
+      {
+        protocol: 'https',
+        hostname: 'img.flawlessfiles.com',
       },
       {
         protocol: 'https',
         hostname: 's4.anilist.co',
-      },
-      {
-        protocol: 'https',
-        hostname: 'gogocdn.net',
       },
       {
         protocol: 'https',
@@ -27,8 +26,16 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'image.tmdb.org',
       },
+      {
+        protocol: 'https',
+        hostname: 'media.kitsu.io',
+      },
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
     ],
   },
 };
 
-export default nextConfig;
+module.exports = nextConfig;

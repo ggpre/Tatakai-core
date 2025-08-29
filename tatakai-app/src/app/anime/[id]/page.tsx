@@ -5,12 +5,12 @@ import { useParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
-import { AnimeAPI, type AnimeInfoResponse } from '@/lib/api';
+import { AnimeAPI, type AnimeInfoResponse, type AnimeEpisodesResponse } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, Star, Clock, Calendar, Users, BookOpen, Heart, Share2 } from 'lucide-react';
+import { Play, Star, Clock, BookOpen, Heart, Share2 } from 'lucide-react';
 import AnimeCarousel from '@/components/AnimeCarousel';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -18,6 +18,7 @@ const AnimeDetailsPage = () => {
   const params = useParams();
   const animeId = params?.id as string;
   const [animeData, setAnimeData] = useState<AnimeInfoResponse | null>(null);
+  const [episodes, setEpisodes] = useState<AnimeEpisodesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,6 +32,16 @@ const AnimeDetailsPage = () => {
         
         if (data.success) {
           setAnimeData(data);
+          
+          // Also fetch episodes
+          try {
+            const episodesData = await AnimeAPI.getAnimeEpisodes(animeId);
+            if (episodesData.success) {
+              setEpisodes(episodesData);
+            }
+          } catch (episodesErr) {
+            console.error('Error fetching episodes:', episodesErr);
+          }
         } else {
           setError('Failed to load anime details');
         }
@@ -65,7 +76,7 @@ const AnimeDetailsPage = () => {
   const { info, moreInfo } = anime;
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Hero Section */}
       <div className="relative h-screen">
         <div className="absolute inset-0">
@@ -136,10 +147,12 @@ const AnimeDetailsPage = () => {
                 </p>
 
                 <div className="flex flex-wrap gap-4">
-                  <Button size="lg" className="bg-rose-600 hover:bg-rose-700">
-                    <Play className="w-5 h-5 mr-2" />
-                    Watch Now
-                  </Button>
+                  <Link href={`/watch/${animeId}?ep=1`}>
+                    <Button size="lg" className="bg-rose-600 hover:bg-rose-700">
+                      <Play className="w-5 h-5 mr-2" />
+                      Watch Now
+                    </Button>
+                  </Link>
                   <Button variant="outline" size="lg">
                     <Heart className="w-5 h-5 mr-2" />
                     Add to List
@@ -266,7 +279,32 @@ const AnimeDetailsPage = () => {
             <Card>
               <CardContent className="p-6">
                 <h3 className="text-2xl font-bold mb-6">Episodes</h3>
-                <p className="text-muted-foreground">Episodes will be loaded here...</p>
+                {episodes?.data?.episodes ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                    {episodes.data.episodes.map((episode, index) => (
+                      <Link key={episode.episodeId} href={`/watch/${animeId}?ep=${episode.number}`}>
+                        <Card className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:border-rose-500/50">
+                          <CardContent className="p-4">
+                            <div className="aspect-video bg-gradient-to-br from-rose-500/20 to-purple-500/20 rounded-lg flex items-center justify-center mb-3 group-hover:from-rose-500/30 group-hover:to-purple-500/30 transition-all">
+                              <Play className="w-8 h-8 text-white opacity-80" />
+                            </div>
+                            <h4 className="font-semibold text-sm mb-1 group-hover:text-rose-500 transition-colors">
+                              Episode {episode.number}
+                            </h4>
+                            <p className="text-xs text-muted-foreground line-clamp-2">
+                              {episode.title}
+                            </p>
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500 mx-auto mb-4"></div>
+                    <p className="text-muted-foreground">Loading episodes...</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

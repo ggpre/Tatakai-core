@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Info, Star, Clock, Calendar, Plus, Heart } from 'lucide-react';
+import { Play, Info, Clock, Plus, Heart } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -36,13 +36,12 @@ const AnimeCard: React.FC<AnimeCardProps> = ({
       y: 0,
       transition: { 
         delay: index * 0.1,
-        duration: 0.5,
-        ease: "easeOut"
+        duration: 0.5
       }
     },
     hover: {
       y: -8,
-      transition: { duration: 0.3, ease: "easeOut" }
+      transition: { duration: 0.3 }
     }
   };
 
@@ -210,18 +209,22 @@ const AnimeCard: React.FC<AnimeCardProps> = ({
                             animate={{ scale: 1, opacity: 1 }}
                             transition={{ delay: 0.1 }}
                           >
-                            <Button size="sm" className="bg-primary hover:bg-primary/90">
-                              <Play className="w-4 h-4" />
-                            </Button>
+                            <Link href={`/anime/${anime.id}`}>
+                              <Button size="sm" className="bg-primary hover:bg-primary/90">
+                                <Play className="w-4 h-4" />
+                              </Button>
+                            </Link>
                           </motion.div>
                           <motion.div
                             initial={{ scale: 0, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             transition={{ delay: 0.2 }}
                           >
-                            <Button size="sm" variant="secondary">
-                              <Info className="w-4 h-4" />
-                            </Button>
+                            <Link href={`/anime/${anime.id}`}>
+                              <Button size="sm" variant="secondary">
+                                <Info className="w-4 h-4" />
+                              </Button>
+                            </Link>
                           </motion.div>
                           <motion.div
                             initial={{ scale: 0, opacity: 0 }}
@@ -340,10 +343,12 @@ const AnimeCard: React.FC<AnimeCardProps> = ({
             )}
 
             <div className="flex space-x-2 pt-2">
-              <Button size="sm" className="flex-1">
-                <Play className="w-3 h-3 mr-1" />
-                Watch
-              </Button>
+              <Link href={`/anime/${anime.id}`} className="flex-1">
+                <Button size="sm" className="w-full">
+                  <Play className="w-3 h-3 mr-1" />
+                  Watch
+                </Button>
+              </Link>
               <Button size="sm" variant="outline">
                 <Plus className="w-3 h-3" />
               </Button>

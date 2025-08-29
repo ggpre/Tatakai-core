@@ -107,6 +107,21 @@ export interface AnimeInfoResponse {
   };
 }
 
+export interface Episode {
+  title: string;
+  episodeId: string;
+  number: number;
+  isFiller: boolean;
+}
+
+export interface AnimeEpisodesResponse {
+  success: boolean;
+  data: {
+    totalEpisodes: number;
+    episodes: Episode[];
+  };
+}
+
 export interface Server {
   serverId: number;
   serverName: string;
@@ -139,10 +154,10 @@ export interface EpisodeSourcesResponse {
   data: {
     headers: {
       Referer: string;
-      'User-Agent': string;
+      'User-Agent'?: string;
     };
     sources: EpisodeSource[];
-    subtitles: Subtitle[];
+    tracks: Subtitle[];  // Changed from 'subtitles' to 'tracks'
     anilistID: number | null;
     malID: number | null;
   };
@@ -259,6 +274,18 @@ export class AnimeAPI {
     return data;
   }
 
+  // Get anime episodes
+  static async getAnimeEpisodes(animeId: string): Promise<AnimeEpisodesResponse> {
+    const response = await fetch(`${this.BASE_URL}?endpoint=/anime/${animeId}/episodes`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data;
+  }
+
   // Get anime episode servers
   static async getEpisodeServers(animeEpisodeId: string): Promise<EpisodeServersResponse> {
     const response = await fetch(`${this.BASE_URL}?endpoint=/episode/servers&animeEpisodeId=${encodeURIComponent(animeEpisodeId)}`);
@@ -306,6 +333,21 @@ export class AnimeAPI {
     if (genres) endpoint += `&genres=${genres}`;
     
     const response = await fetch(`${this.BASE_URL}?endpoint=${endpoint}`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data;
+  }
+
+  // Get anime by category
+  static async getAnimeByCategory(
+    category: string,
+    page: number = 1
+  ): Promise<SearchResponse> {
+    const response = await fetch(`${this.BASE_URL}?endpoint=/category/${category}?page=${page}`);
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);

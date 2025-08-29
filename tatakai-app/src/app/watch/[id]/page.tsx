@@ -1,42 +1,112 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { AnimeAPI, type EpisodeServersResponse, type EpisodeSourcesResponse } from '@/lib/api';
+import { AnimeAPI, type EpisodeServersResponse, type EpisodeSourcesResponse, type AnimeEpisodesResponse, type Episode, type AnimeInfoResponse } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Play, Download, Settings, Volume2, Maximize, SkipBack, SkipForward } from 'lucide-react';
+import { Play, ArrowLeft, SkipBack, SkipForward, Star, Clock, Calendar } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import VideoPlayer from '@/components/VideoPlayer';
+import Image from 'next/image';
 
 const WatchPage = () => {
   const params = useParams();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const animeId = params?.id as string;
-  const episodeId = searchParams?.get('ep') || 'steinsgate-0-92?ep=2055'; // Default test episode
+  const episodeParam = searchParams?.get('ep');
   
+  const [episodes, setEpisodes] = useState<AnimeEpisodesResponse | null>(null);
+  const [currentEpisodeId, setCurrentEpisodeId] = useState<string>('');
+  const [currentEpisode, setCurrentEpisode] = useState<Episode | null>(null);
   const [servers, setServers] = useState<EpisodeServersResponse | null>(null);
   const [sources, setSources] = useState<EpisodeSourcesResponse | null>(null);
   const [selectedServer, setSelectedServer] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<'sub' | 'dub' | 'raw'>('sub');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [animeInfo, setAnimeInfo] = useState<AnimeInfoResponse['data']['anime'] | null>(null);
 
   useEffect(() => {
     const fetchEpisodeData = async () => {
-      if (!episodeId) {
-        console.log('No episode ID provided');
+      console.log('=== WATCH PAGE DEBUG ===');
+      console.log('animeId:', animeId);
+      console.log('episodeParam from searchParams:', episodeParam);
+      
+      if (!animeId) {
+        setError('No anime ID provided');
+        setLoading(false);
         return;
       }
       
-      console.log('Fetching episode data for:', episodeId);
-      
       try {
         setLoading(true);
+        setError(null);
         
-        // Fetch available servers
+        // First, get the episodes list for this anime
+        console.log('Fetching episodes for anime:', animeId);
+        const episodesData = await AnimeAPI.getAnimeEpisodes(animeId);
+        
+        // Also try to get anime info for additional details
+        try {
+          const animeData = await AnimeAPI.getAnimeInfo(animeId);
+          if (animeData.success) {
+            setAnimeInfo(animeData.data.anime);
+          }
+        } catch (err) {
+          console.log('Could not fetch anime info:', err);
+        }
+        
+        if (!episodesData.success || !episodesData.data.episodes.length) {
+          setError('No episodes found for this anime');
+          setLoading(false);
+          return;
+        }
+        
+        setEpisodes(episodesData);
+        
+        // Determine which episode to load
+        let targetEpisode;
+        if (episodeParam) {
+          // If episodeParam is a simple number, find the episode by number
+          if (/^\d+$/.test(episodeParam)) {
+            const episodeNumber = parseInt(episodeParam);
+            targetEpisode = episodesData.data.episodes.find(ep => ep.number === episodeNumber);
+          } else {
+            // If episodeParam is already a full episode ID, find it in episodes or create a placeholder
+            const foundEpisode = episodesData.data.episodes.find(ep => ep.episodeId === episodeParam);
+            if (foundEpisode) {
+              targetEpisode = foundEpisode;
+            } else {
+              // Create a placeholder episode for unknown episode ID
+              targetEpisode = {
+                title: `Episode ${episodeParam}`,
+                episodeId: episodeParam,
+                number: 1,
+                isFiller: false
+              };
+            }
+          }
+        } else {
+          // Default to first episode
+          targetEpisode = episodesData.data.episodes[0];
+        }
+        
+        if (!targetEpisode) {
+          setError(`Episode ${episodeParam} not found`);
+          setLoading(false);
+          return;
+        }
+        
+        const episodeId = targetEpisode.episodeId;
+        setCurrentEpisodeId(episodeId);
+        setCurrentEpisode(targetEpisode);
+        console.log('Using episode ID:', episodeId);
+        
+        // Fetch available servers for this episode
         console.log('Calling getEpisodeServers with:', episodeId);
         const serversData = await AnimeAPI.getEpisodeServers(episodeId);
         
@@ -51,7 +121,18 @@ const WatchPage = () => {
                                  serversData.data.raw;
           
           if (availableServers.length > 0) {
-            const defaultServer = availableServers.find(s => s.serverName === 'hd-1') || availableServers[0];
+            // Try servers in priority order: hd-2, hd-3, hd-1
+            const serverPriority = ['hd-2', 'hd-3', 'hd-1'];
+            let defaultServer = availableServers[0]; // fallback
+            
+            for (const serverName of serverPriority) {
+              const server = availableServers.find(s => s.serverName === serverName);
+              if (server) {
+                defaultServer = server;
+                break;
+              }
+            }
+            
             setSelectedServer(defaultServer.serverName);
             
             // Determine category based on available servers
@@ -76,66 +157,99 @@ const WatchPage = () => {
     };
 
     fetchEpisodeData();
-  }, [episodeId]);
+  }, [animeId, episodeParam]);
+
+  // Navigation functions
+  const goToEpisode = (episodeNumber: number) => {
+    router.push(`/watch/${animeId}?ep=${episodeNumber}`);
+  };
+
+  const goToPreviousEpisode = () => {
+    if (!currentEpisode || !episodes) return;
+    const currentNumber = currentEpisode.number;
+    if (currentNumber > 1) {
+      goToEpisode(currentNumber - 1);
+    }
+  };
+
+  const goToNextEpisode = () => {
+    if (!currentEpisode || !episodes) return;
+    const currentNumber = currentEpisode.number;
+    const maxEpisode = episodes.data.episodes.length;
+    if (currentNumber < maxEpisode) {
+      goToEpisode(currentNumber + 1);
+    }
+  };
 
   const fetchSources = async (episodeId: string, server: string, category: 'sub' | 'dub' | 'raw') => {
     try {
+      console.log(`Fetching sources for server: ${server}, category: ${category}`);
       const sourcesData = await AnimeAPI.getEpisodeSources(episodeId, server, category);
       
       if (sourcesData.success) {
         setSources(sourcesData);
+        console.log('=== SOURCES DEBUG ===');
+        console.log('Full sources response:', JSON.stringify(sourcesData, null, 2));
+        console.log('Sources array:', sourcesData.data.sources);
+        console.log('Tracks array:', sourcesData.data.tracks);
+        console.log('Headers:', sourcesData.data.headers);
+        console.log('=====================');
       } else {
-        setError('Failed to load video sources');
+        console.error('Sources API returned success: false');
+        throw new Error('Failed to load video sources');
       }
     } catch (err) {
-      console.error('Error fetching sources:', err);
-      setError('Unable to load video sources');
+      console.error(`Error fetching sources for server ${server}:`, err);
+      
+      // Try alternative servers if current one fails
+      if (servers) {
+        const availableServers = servers.data[category] || [];
+        const currentServerIndex = availableServers.findIndex(s => s.serverName === server);
+        const nextServer = availableServers[currentServerIndex + 1];
+        
+        if (nextServer) {
+          console.log(`Trying alternative server: ${nextServer.serverName}`);
+          setSelectedServer(nextServer.serverName);
+          return fetchSources(episodeId, nextServer.serverName, category);
+        }
+      }
+      
+      setError(`Unable to load video sources from any server: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
 
   const handleServerChange = async (serverName: string) => {
-    if (!episodeId) return;
+    if (!currentEpisodeId) return;
     
     setSelectedServer(serverName);
     setLoading(true);
     
     try {
-      await fetchSources(episodeId, serverName, selectedCategory);
+      await fetchSources(currentEpisodeId, serverName, selectedCategory);
     } finally {
       setLoading(false);
     }
   };
 
   const handleCategoryChange = async (category: 'sub' | 'dub' | 'raw') => {
-    if (!episodeId || !selectedServer) return;
+    if (!currentEpisodeId || !selectedServer) return;
     
     setSelectedCategory(category);
     setLoading(true);
     
     try {
-      await fetchSources(episodeId, selectedServer, category);
+      await fetchSources(currentEpisodeId, selectedServer, category);
     } finally {
       setLoading(false);
     }
   };
 
-  if (!episodeId) {
+  if (!animeId) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Episode not found</h2>
-          <p className="text-muted-foreground mb-4">Please select a valid episode to watch.</p>
-          <p className="text-sm text-muted-foreground mb-4">
-            Episode ID format should be like: anime-id?ep=episode-number
-          </p>
-          <Button 
-            onClick={() => {
-              // Test with a sample episode ID
-              window.location.href = '/watch/steinsgate-3?ep=230';
-            }}
-          >
-            Try Sample Episode
-          </Button>
+          <h2 className="text-2xl font-bold mb-4">Anime not found</h2>
+          <p className="text-muted-foreground">Please select a valid anime to watch.</p>
         </div>
       </div>
     );
@@ -158,119 +272,197 @@ const WatchPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black">
+      {/* Navigation Header */}
+      <div className="absolute top-0 left-0 right-0 z-50 bg-black/50 backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <Button
+              variant="ghost"
+              onClick={() => router.back()}
+              className="text-white hover:text-rose-500 hover:bg-white/10"
+            >
+              <ArrowLeft className="w-5 h-5 mr-2" />
+              Back
+            </Button>
+            
+            {currentEpisode && episodes && (
+              <div className="flex items-center space-x-4">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={goToPreviousEpisode}
+                  disabled={currentEpisode.number <= 1}
+                  className="text-white hover:text-rose-500 hover:bg-white/10 disabled:opacity-50"
+                >
+                  <SkipBack className="w-4 h-4 mr-1" />
+                  Previous
+                </Button>
+                
+                <span className="text-white text-sm">
+                  Episode {currentEpisode.number} of {episodes.data.episodes.length}
+                </span>
+                
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={goToNextEpisode}
+                  disabled={currentEpisode.number >= episodes.data.episodes.length}
+                  className="text-white hover:text-rose-500 hover:bg-white/10 disabled:opacity-50"
+                >
+                  Next
+                  <SkipForward className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Video Player */}
       <div className="relative">
         <div className="aspect-video bg-black relative">
           {sources?.data.sources && sources.data.sources.length > 0 ? (
             <VideoPlayer 
               sources={sources.data.sources}
-              subtitles={sources.data.subtitles}
+              subtitles={sources?.data?.tracks || []}
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
               <div className="text-center text-white">
-                <Play className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-rose-500 mx-auto mb-4"></div>
                 <p className="text-xl">Loading video...</p>
               </div>
             </div>
           )}
         </div>
-
-        {/* Video Controls Overlay */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex items-center justify-between text-white">
-              <div className="flex items-center space-x-4">
-                <Button variant="ghost" size="sm" className="text-white hover:text-rose-500">
-                  <SkipBack className="w-5 h-5" />
-                </Button>
-                <Button variant="ghost" size="sm" className="text-white hover:text-rose-500">
-                  <Play className="w-6 h-6" />
-                </Button>
-                <Button variant="ghost" size="sm" className="text-white hover:text-rose-500">
-                  <SkipForward className="w-5 h-5" />
-                </Button>
-                <Button variant="ghost" size="sm" className="text-white hover:text-rose-500">
-                  <Volume2 className="w-5 h-5" />
-                </Button>
-              </div>
-              
-              <div className="flex items-center space-x-4">
-                <Button variant="ghost" size="sm" className="text-white hover:text-rose-500">
-                  <Settings className="w-5 h-5" />
-                </Button>
-                <Button variant="ghost" size="sm" className="text-white hover:text-rose-500">
-                  <Download className="w-5 h-5" />
-                </Button>
-                <Button variant="ghost" size="sm" className="text-white hover:text-rose-500">
-                  <Maximize className="w-5 h-5" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
 
-      {/* Episode Info & Controls */}
-      <div className="bg-background">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      {/* Content Below Video */}
+      <div className="bg-gradient-to-b from-black to-gray-900 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Episode Info */}
-            <div className="lg:col-span-2 space-y-6">
+            
+            {/* Main Content */}
+            <div className="lg:col-span-2 space-y-8">
+              
+              {/* Episode Information */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6 }}
+                className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50"
               >
-                <div className="flex items-center space-x-4 mb-4">
-                  <Badge variant="secondary">
-                    Episode {servers?.data.episodeNo}
-                  </Badge>
-                  <Badge variant="outline" className="border-rose-500 text-rose-500">
-                    {selectedCategory.toUpperCase()}
-                  </Badge>
+                <div className="flex items-start space-x-6">
+                  {animeInfo?.info?.poster && (
+                    <div className="flex-shrink-0">
+                      <Image
+                        src={animeInfo.info.poster}
+                        alt={animeInfo.info.name || 'Anime poster'}
+                        width={120}
+                        height={160}
+                        className="rounded-xl object-cover shadow-lg"
+                      />
+                    </div>
+                  )}
+                  
+                  <div className="flex-1 space-y-4">
+                    <div>
+                      <h1 className="text-3xl font-bold text-white mb-2">
+                        {animeInfo?.info?.name || animeId}
+                      </h1>
+                      {currentEpisode && (
+                        <h2 className="text-xl text-rose-400 font-medium">
+                          Episode {currentEpisode.number}: {currentEpisode.title}
+                        </h2>
+                      )}
+                    </div>
+                    
+                    {animeInfo && (
+                      <div className="flex flex-wrap gap-4 text-sm text-gray-300">
+                        {animeInfo.info?.stats?.rating && (
+                          <div className="flex items-center space-x-1">
+                            <Star className="w-4 h-4 text-yellow-500" />
+                            <span>{animeInfo.info.stats.rating}</span>
+                          </div>
+                        )}
+                        {animeInfo.moreInfo?.aired && (
+                          <div className="flex items-center space-x-1">
+                            <Calendar className="w-4 h-4 text-blue-500" />
+                            <span>{animeInfo.moreInfo.aired}</span>
+                          </div>
+                        )}
+                        {animeInfo.moreInfo?.duration && (
+                          <div className="flex items-center space-x-1">
+                            <Clock className="w-4 h-4 text-green-500" />
+                            <span>{animeInfo.moreInfo.duration}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {animeInfo?.info?.description && (
+                      <p className="text-gray-300 leading-relaxed line-clamp-3">
+                        {animeInfo.info.description}
+                      </p>
+                    )}
+                    
+                    {animeInfo?.moreInfo?.genres && (
+                      <div className="flex flex-wrap gap-2">
+                        {animeInfo.moreInfo.genres.map((genre: string, index: number) => (
+                          <Badge key={index} variant="secondary" className="bg-rose-500/20 text-rose-300 border-rose-500/30">
+                            {genre}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                
-                <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-                  {animeId.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                </h1>
-                
-                <p className="text-muted-foreground mb-6">
-                  Episode {servers?.data.episodeNo} - Now Playing
-                </p>
+              </motion.div>
 
-                {/* Server & Quality Selection */}
+              {/* Server Selection */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.1 }}
+                className="bg-card/50 backdrop-blur-sm rounded-2xl p-6 border border-border/50"
+              >
+                <h3 className="text-xl font-bold mb-4">Video Settings</h3>
+                
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium mb-2">Category</label>
+                    <label className="block text-sm font-medium mb-2 text-foreground">Category</label>
                     <Select value={selectedCategory} onValueChange={handleCategoryChange}>
-                      <SelectTrigger>
+                      <SelectTrigger className="bg-card/50 border-border text-foreground">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-card border-border">
                         {servers?.data.sub && servers.data.sub.length > 0 && (
-                          <SelectItem value="sub">Subtitled</SelectItem>
+                          <SelectItem value="sub" className="text-foreground hover:bg-muted">Subtitled</SelectItem>
                         )}
                         {servers?.data.dub && servers.data.dub.length > 0 && (
-                          <SelectItem value="dub">Dubbed</SelectItem>
+                          <SelectItem value="dub" className="text-foreground hover:bg-muted">Dubbed</SelectItem>
                         )}
                         {servers?.data.raw && servers.data.raw.length > 0 && (
-                          <SelectItem value="raw">Raw</SelectItem>
+                          <SelectItem value="raw" className="text-foreground hover:bg-muted">Raw</SelectItem>
                         )}
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-2">Server</label>
+                    <label className="block text-sm font-medium mb-2 text-foreground">Server</label>
                     <Select value={selectedServer} onValueChange={handleServerChange}>
-                      <SelectTrigger>
+                      <SelectTrigger className="bg-card/50 border-border text-foreground">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-card border-border">
                         {servers?.data[selectedCategory]?.map((server) => (
-                          <SelectItem key={server.serverId} value={server.serverName}>
+                          <SelectItem 
+                            key={server.serverId} 
+                            value={server.serverName}
+                            className="text-foreground hover:bg-muted"
+                          >
                             {server.serverName}
                           </SelectItem>
                         ))}
@@ -279,16 +471,16 @@ const WatchPage = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-2">Quality</label>
+                    <label className="block text-sm font-medium mb-2 text-gray-300">Quality</label>
                     <Select defaultValue="auto">
-                      <SelectTrigger>
+                      <SelectTrigger className="bg-gray-700/50 border-gray-600 text-white">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="auto">Auto</SelectItem>
-                        <SelectItem value="1080p">1080p</SelectItem>
-                        <SelectItem value="720p">720p</SelectItem>
-                        <SelectItem value="480p">480p</SelectItem>
+                      <SelectContent className="bg-gray-800 border-gray-600">
+                        <SelectItem value="auto" className="text-white hover:bg-gray-700">Auto</SelectItem>
+                        <SelectItem value="1080p" className="text-white hover:bg-gray-700">1080p</SelectItem>
+                        <SelectItem value="720p" className="text-white hover:bg-gray-700">720p</SelectItem>
+                        <SelectItem value="480p" className="text-white hover:bg-gray-700">480p</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -296,96 +488,88 @@ const WatchPage = () => {
               </motion.div>
             </div>
 
-            {/* Episode List */}
+            {/* Sidebar */}
             <div className="space-y-6">
-              <Card>
-                <CardContent className="p-6">
-                  <h3 className="text-xl font-bold mb-4">Episodes</h3>
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {/* Placeholder episode list */}
-                    {[...Array(12)].map((_, index) => (
-                      <div 
-                        key={index}
-                        className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                          index + 1 === servers?.data.episodeNo 
-                            ? 'bg-rose-500 text-white' 
-                            : 'bg-muted hover:bg-muted/80'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium">Episode {index + 1}</span>
-                          <Play className="w-4 h-4" />
+              {/* Episodes List */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50"
+              >
+                <h3 className="text-xl font-bold mb-4">Episodes</h3>
+                <div className="space-y-3 max-h-96 overflow-y-auto custom-scrollbar">
+                  {episodes?.data.episodes.map((episode) => (
+                    <div
+                      key={episode.episodeId}
+                      onClick={() => goToEpisode(episode.number)}
+                      className={`
+                        group p-4 rounded-xl cursor-pointer transition-all duration-200 border
+                        ${episode.number === currentEpisode?.number 
+                          ? 'bg-rose-500/20 border-rose-500/50' 
+                          : 'bg-card/30 border-border/50 hover:bg-card/50 hover:border-rose-500/30'}
+                      `}
+                    >
+                      <div className="flex items-center space-x-4">
+                        {/* Episode Thumbnail */}
+                        <div className="relative w-20 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-gradient-to-br from-rose-500/20 to-purple-500/20">
+                          {animeInfo?.info?.poster ? (
+                            <Image
+                              src={animeInfo.info.poster}
+                              alt={`Episode ${episode.number}`}
+                              fill
+                              className="object-cover opacity-60"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-rose-500/30 to-purple-500/30 flex items-center justify-center">
+                              <Play className="w-4 h-4 text-white" />
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                            <Play className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                          {/* Episode Number Badge */}
+                          <div className="absolute top-1 left-1 bg-black/80 text-white text-xs px-1.5 py-0.5 rounded">
+                            {episode.number}
+                          </div>
+                        </div>
+
+                        {/* Episode Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <h4 className="font-semibold text-foreground group-hover:text-rose-400 transition-colors">
+                              Episode {episode.number}
+                            </h4>
+                            {episode.isFiller && (
+                              <Badge variant="secondary" className="text-xs bg-amber-500/20 text-amber-300 border-amber-500/30">
+                                Filler
+                              </Badge>
+                            )}
+                            {episode.number === currentEpisode?.number && (
+                              <Badge variant="default" className="text-xs bg-rose-500/20 text-rose-400 border-rose-500/50">
+                                Playing
+                              </Badge>
+                            )}
+                          </div>
+                          {episode.title && (
+                            <p className="text-sm text-muted-foreground line-clamp-2 group-hover:text-muted-foreground/80 transition-colors">
+                              {episode.title}
+                            </p>
+                          )}
+                        </div>
+                        
+                        {/* Episode Duration/Play Icon */}
+                        <div className="flex flex-col items-end space-y-1">
+                          <Play className="w-4 h-4 flex-shrink-0 text-muted-foreground group-hover:text-rose-400 transition-colors" />
+                          <span className="text-xs text-muted-foreground">~24min</span>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Download Options */}
-              <Card>
-                <CardContent className="p-6">
-                  <h3 className="text-xl font-bold mb-4">Download</h3>
-                  <div className="space-y-3">
-                    {sources?.data.sources.map((source, index) => (
-                      <Button key={index} variant="outline" className="w-full justify-between">
-                        <span>{source.quality || 'Default Quality'}</span>
-                        <Download className="w-4 h-4" />
-                      </Button>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Video Player Component
-const VideoPlayer = ({ sources, subtitles }: { 
-  sources: any[], 
-  subtitles: any[] 
-}) => {
-  const videoRef = React.useRef<HTMLVideoElement>(null);
-  const [selectedSource, setSelectedSource] = useState(sources[0]);
-
-  useEffect(() => {
-    if (videoRef.current && selectedSource) {
-      videoRef.current.src = selectedSource.url;
-    }
-  }, [selectedSource]);
-
-  return (
-    <div className="w-full h-full relative">
-      <video
-        ref={videoRef}
-        className="w-full h-full"
-        controls
-        autoPlay
-        playsInline
-        crossOrigin="anonymous"
-      >
-        {subtitles?.map((subtitle, index) => (
-          <track
-            key={index}
-            kind="subtitles"
-            src={subtitle.url}
-            srcLang={subtitle.lang.toLowerCase()}
-            label={subtitle.lang}
-            default={index === 0}
-          />
-        ))}
-        Your browser does not support the video tag.
-      </video>
-      
-      {/* Custom loading overlay */}
-      <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 pointer-events-none transition-opacity">
-        <div className="text-white text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto mb-4"></div>
-          <p>Loading video...</p>
         </div>
       </div>
     </div>

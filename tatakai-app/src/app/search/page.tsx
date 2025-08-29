@@ -1,22 +1,21 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Search, Filter, Grid, List, SortAsc } from 'lucide-react';
+import { Search, Grid, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import AnimeCard from '@/components/AnimeCard';
-import { AnimeAPI, type SearchResult } from '@/lib/api';
+import { AnimeAPI, type SearchResponse } from '@/lib/api';
 
 const SearchPage = () => {
   const searchParams = useSearchParams();
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
-  const [searchResults, setSearchResults] = useState<SearchResult | null>(null);
+  const [searchResults, setSearchResults] = useState<SearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [currentPage, setCurrentPage] = useState(1);
@@ -35,7 +34,6 @@ const SearchPage = () => {
   ];
 
   const types = ['TV', 'Movie', 'OVA', 'ONA', 'Special'];
-  const statuses = ['Currently Airing', 'Finished Airing', 'Not Yet Aired'];
   const sortOptions = [
     { value: 'recently-added', label: 'Recently Added' },
     { value: 'recently-updated', label: 'Recently Updated' },
@@ -44,25 +42,31 @@ const SearchPage = () => {
     { value: 'released-date', label: 'Release Date' }
   ];
 
-  useEffect(() => {
-    if (searchQuery) {
-      handleSearch();
-    }
-  }, [searchQuery, currentPage, filters]);
-
-  const handleSearch = async () => {
+  const handleSearch = useCallback(async () => {
     if (!searchQuery.trim()) return;
 
     setLoading(true);
     try {
-      const result = await AnimeAPI.searchAnime(searchQuery, currentPage, filters);
+      const result = await AnimeAPI.searchAnime(
+        searchQuery, 
+        currentPage, 
+        filters.type, 
+        filters.status, 
+        filters.genre
+      );
       setSearchResults(result);
     } catch (error) {
       console.error('Search error:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchQuery, currentPage, filters]);
+
+  useEffect(() => {
+    if (searchQuery) {
+      handleSearch();
+    }
+  }, [searchQuery, currentPage, filters, handleSearch]);
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -229,16 +233,6 @@ const SearchPage = () => {
                 Found {searchResults.data.animes?.length || 0} results
                 {searchQuery && ` for "${searchQuery}"`}
               </p>
-              {searchResults.data.searchFilters && Object.keys(searchResults.data.searchFilters).length > 0 && (
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-muted-foreground">Filters:</span>
-                  {Object.entries(searchResults.data.searchFilters).map(([key, value]) => (
-                    <Badge key={key} variant="secondary" className="text-xs">
-                      {key}: {value}
-                    </Badge>
-                  ))}
-                </div>
-              )}
             </div>
           </motion.div>
         )}
@@ -314,4 +308,15 @@ const SearchPage = () => {
   );
 };
 
-export default SearchPage;
+const SearchPageWrapper = () => (
+  <Suspense fallback={<div className="min-h-screen flex items-center justify-center">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500 mx-auto mb-4"></div>
+      <p>Loading search...</p>
+    </div>
+  </div>}>
+    <SearchPage />
+  </Suspense>
+);
+
+export default SearchPageWrapper;

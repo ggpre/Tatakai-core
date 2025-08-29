@@ -51,13 +51,6 @@ const Top10Section: React.FC<Top10SectionProps> = ({ top10Animes }) => {
     }
   };
 
-  const getRankColor = (rank: number) => {
-    if (rank === 1) return 'text-yellow-500';
-    if (rank === 2) return 'text-gray-400';
-    if (rank === 3) return 'text-amber-600';
-    return 'text-muted-foreground';
-  };
-
   const getRankBg = (rank: number) => {
     if (rank === 1) return 'bg-gradient-to-r from-yellow-500 to-yellow-600';
     if (rank === 2) return 'bg-gradient-to-r from-gray-400 to-gray-500';

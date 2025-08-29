@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -23,13 +24,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Badge } from '@/components/ui/badge';
-import { AnimeAPI } from '@/lib/api';
+import { AnimeAPI, type Anime } from '@/lib/api';
 
 const Navigation = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchSuggestions, setSearchSuggestions] = useState([]);
+  const [searchSuggestions, setSearchSuggestions] = useState<Anime[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [isScrolled, setIsScrolled] = useState(false);
   const router = useRouter();
@@ -47,8 +47,8 @@ const Navigation = () => {
     if (searchQuery.length > 2) {
       const debounce = setTimeout(async () => {
         try {
-          const suggestions = await AnimeAPI.getSearchSuggestions(searchQuery);
-          setSearchSuggestions(suggestions.data?.suggestions || []);
+          const suggestions = await AnimeAPI.searchAnime(searchQuery, 1);
+          setSearchSuggestions(suggestions.data?.animes?.slice(0, 5) || []);
         } catch (error) {
           console.error('Error fetching suggestions:', error);
         }
@@ -73,10 +73,10 @@ const Navigation = () => {
     document.documentElement.classList.toggle('dark');
   };
 
-  const navigationItems = [
-    { name: 'Home', href: '/', icon: Home },
-    { name: 'TV Shows', href: '/category/tv', icon: Tv },
-    { name: 'Movies', href: '/category/movie', icon: Film },
+    const navigationItems = [
+    { name: 'Browse', href: '/category/all', icon: Home },
+    { name: 'Movies', href: '/movies', icon: Film },
+    { name: 'TV Series', href: '/tv-series', icon: Tv },
     { name: 'Top Rated', href: '/category/most-favorite', icon: Star },
     { name: 'Recently Added', href: '/category/recently-added', icon: Clock },
     { name: 'Trending', href: '/trending', icon: TrendingUp },
@@ -107,9 +107,13 @@ const Navigation = () => {
               className="flex items-center space-x-2"
             >
               <Link href="/" className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <Play className="w-5 h-5 text-primary-foreground" />
-                </div>
+                <Image
+                  src="/logo.png"
+                  alt="Tatakai"
+                  width={32}
+                  height={32}
+                  className="w-8 h-8 rounded-lg"
+                />
                 <span className="text-xl font-bold text-foreground">Tatakai</span>
               </Link>
             </motion.div>
@@ -240,7 +244,7 @@ const Navigation = () => {
                 {/* Search Suggestions */}
                 {searchSuggestions.length > 0 && (
                   <div className="space-y-2 max-h-80 overflow-y-auto">
-                    {searchSuggestions.map((suggestion: any, index: number) => (
+                    {searchSuggestions.map((suggestion: Anime, index: number) => (
                       <motion.div
                         key={suggestion.id}
                         initial={{ opacity: 0, y: 10 }}
@@ -259,13 +263,6 @@ const Navigation = () => {
                           {suggestion.jname && (
                             <p className="text-xs text-muted-foreground">{suggestion.jname}</p>
                           )}
-                          <div className="flex items-center space-x-2 mt-1">
-                            {suggestion.moreInfo?.map((info: string, idx: number) => (
-                              <Badge key={idx} variant="secondary" className="text-xs">
-                                {info}
-                              </Badge>
-                            ))}
-                          </div>
                         </div>
                       </motion.div>
                     ))}
