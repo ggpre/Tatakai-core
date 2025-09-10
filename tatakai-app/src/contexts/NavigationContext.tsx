@@ -71,11 +71,11 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({
       if (isNavigationDisabled) return; // Don't register elements when navigation is disabled
       
       navigationItems.set(id, element);
-      console.log(`🎯 Registered element: ${id}`, element);
+      console.log(`Registered element: ${id}`, element);
 
       // Auto-focus the first registered element if nothing is currently focused
       if (!focusedElement) {
-        console.log(`🎯 Auto-focusing element: ${id}`);
+        console.log(`Auto-focusing element: ${id}`);
         updateFocusedElement(id);
       }
     },

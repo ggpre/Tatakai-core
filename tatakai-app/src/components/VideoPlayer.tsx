@@ -8,7 +8,18 @@ import React, {
   useCallback,
 } from 'react';
 import { Button } from '@/components/ui/button';
-import { Play, Pause, ClipboardList } from 'lucide-react';
+import { 
+  Play, 
+  Pause, 
+  ClipboardList, 
+  Rewind, 
+  FastForward, 
+  VolumeX, 
+  Volume2, 
+  MessageCircle, 
+  Maximize, 
+  Minimize 
+} from 'lucide-react';
 // Using minimal imports to avoid lucide-react issues
 import type Hls from 'hls.js';
 
@@ -223,7 +234,7 @@ const VideoPlayer = React.forwardRef<VideoPlayerRef, VideoPlayerProps>(
       if (seekMessageTimer.current) {
         clearTimeout(seekMessageTimer.current);
       }
-      setSeekMessage(seconds > 0 ? `⏩ +${seconds}s` : `⏪ ${seconds}s`);
+      setSeekMessage(seconds > 0 ? `>> +${seconds}s` : `<< ${seconds}s`);
       seekMessageTimer.current = setTimeout(() => setSeekMessage(null), 1000);
     };
 
@@ -492,8 +503,29 @@ const VideoPlayer = React.forwardRef<VideoPlayerRef, VideoPlayerProps>(
 
         {/* Controls */}
         {showControls && (
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 flex items-center justify-between text-white">
-            <div className="flex items-center space-x-4">
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent">
+            {/* Progress Bar */}
+            <div className="px-4 py-2">
+              <div className="w-full bg-white/20 rounded-full h-1 mb-4 cursor-pointer" 
+                   onClick={(e) => {
+                     const rect = e.currentTarget.getBoundingClientRect();
+                     const clickX = e.clientX - rect.left;
+                     const percentage = clickX / rect.width;
+                     const newTime = percentage * duration;
+                     if (videoRef.current) {
+                       videoRef.current.currentTime = newTime;
+                     }
+                   }}
+              >
+                <div 
+                  className="bg-rose-500 h-1 rounded-full transition-all duration-200" 
+                  style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+                ></div>
+              </div>
+            </div>
+            
+            <div className="px-4 pb-4 flex items-center justify-between text-white">
+              <div className="flex items-center space-x-4">
               {/* Rewind 10s Button */}
               <Button 
                 variant="ghost" 
@@ -501,7 +533,7 @@ const VideoPlayer = React.forwardRef<VideoPlayerRef, VideoPlayerProps>(
                 className={`p-2 ${focusedControl === 'rewind' ? 'ring-4 ring-rose-500 bg-rose-500/20' : ''}`}
               >
                 <div className="flex items-center">
-                  <span className="text-lg font-bold">⏪</span>
+                  <Rewind className="w-5 h-5" />
                   <span className="text-xs ml-1">10s</span>
                 </div>
               </Button>
@@ -525,7 +557,7 @@ const VideoPlayer = React.forwardRef<VideoPlayerRef, VideoPlayerProps>(
                 className={`p-2 ${focusedControl === 'forward' ? 'ring-4 ring-rose-500 bg-rose-500/20' : ''}`}
               >
                 <div className="flex items-center">
-                  <span className="text-lg font-bold">⏩</span>
+                  <FastForward className="w-5 h-5" />
                   <span className="text-xs ml-1">10s</span>
                 </div>
               </Button>
@@ -536,9 +568,9 @@ const VideoPlayer = React.forwardRef<VideoPlayerRef, VideoPlayerProps>(
                 className={`p-2 ${focusedControl === 'volume' ? 'ring-4 ring-rose-500 bg-rose-500/20' : ''}`}
               >
                 {isMuted ? (
-                  <span className="text-xl">🔇</span>
+                  <VolumeX className="w-5 h-5" />
                 ) : (
-                  <span className="text-xl">🔊</span>
+                  <Volume2 className="w-5 h-5" />
                 )}
               </Button>
 
@@ -547,47 +579,48 @@ const VideoPlayer = React.forwardRef<VideoPlayerRef, VideoPlayerProps>(
               </span>
             </div>
 
-            <div className="flex items-center space-x-4">
-              {/* TV-friendly Subtitle Button */}
-              <Button 
-                variant="ghost" 
-                onClick={() => {
-                  if (subtitles && subtitles.length > 0) {
-                    setShowSubtitleMenu(true);
-                  } else {
-                    toggleSubtitles();
-                  }
-                }}
-                className={`p-2 relative ${focusedControl === 'subtitle' ? 'ring-4 ring-rose-500 bg-rose-500/20' : ''} ${subtitlesEnabled ? 'text-rose-400' : ''}`}
-              >
-                <span className="text-xl">💬</span>
-                {subtitlesEnabled && (
-                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full"></div>
-                )}
-              </Button>
+              <div className="flex items-center space-x-4">
+                {/* TV-friendly Subtitle Button */}
+                <Button 
+                  variant="ghost" 
+                  onClick={() => {
+                    if (subtitles && subtitles.length > 0) {
+                      setShowSubtitleMenu(true);
+                    } else {
+                      toggleSubtitles();
+                    }
+                  }}
+                  className={`p-2 relative ${focusedControl === 'subtitle' ? 'ring-4 ring-rose-500 bg-rose-500/20' : ''} ${subtitlesEnabled ? 'text-rose-400' : ''}`}
+                >
+                  <MessageCircle className="w-5 h-5" />
+                  {subtitlesEnabled && (
+                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full"></div>
+                  )}
+                </Button>
 
-              {/* Episodes Button */}
-              <Button 
-                variant="ghost" 
-                onClick={() => onShowEpisodes?.()} 
-                className={`p-2 ${focusedControl === 'episodes' ? 'ring-4 ring-rose-500 bg-rose-500/20' : ''}`}
-              >
-                <div className="flex items-center">
-                  <ClipboardList className="w-5 h-5" />
-                </div>
-              </Button>
+                {/* Episodes Button */}
+                <Button 
+                  variant="ghost" 
+                  onClick={() => onShowEpisodes?.()} 
+                  className={`p-2 ${focusedControl === 'episodes' ? 'ring-4 ring-rose-500 bg-rose-500/20' : ''}`}
+                >
+                  <div className="flex items-center">
+                    <ClipboardList className="w-5 h-5" />
+                  </div>
+                </Button>
 
-              <Button 
-                variant="ghost" 
-                onClick={toggleFullscreen} 
-                className={`p-2 ${focusedControl === 'fullscreen' ? 'ring-4 ring-rose-500 bg-rose-500/20' : ''}`}
-              >
-                {isFullscreen ? (
-                  <span className="text-xl">⛶</span>
-                ) : (
-                  <span className="text-xl">⛶</span>
-                )}
-              </Button>
+                <Button 
+                  variant="ghost" 
+                  onClick={toggleFullscreen} 
+                  className={`p-2 ${focusedControl === 'fullscreen' ? 'ring-4 ring-rose-500 bg-rose-500/20' : ''}`}
+                >
+                  {isFullscreen ? (
+                    <Minimize className="w-5 h-5" />
+                  ) : (
+                    <Maximize className="w-5 h-5" />
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
         )}
@@ -599,7 +632,7 @@ const VideoPlayer = React.forwardRef<VideoPlayerRef, VideoPlayerProps>(
             className="absolute bottom-20 right-4 bg-black/90 backdrop-blur-lg rounded-lg p-4 min-w-[200px] max-w-[300px] text-white"
           >
             <h3 className="text-lg font-bold mb-3 flex items-center">
-              <span className="text-xl mr-2">💬</span>
+              <MessageCircle className="w-5 h-5 mr-2" />
               Subtitles
             </h3>
             <div 

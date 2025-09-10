@@ -1,4 +1,4 @@
-# 🎌 Tatakai - Modern Anime Streaming Platform
+# Tatakai - Modern Anime Streaming Platform
 
 <div align="center">
   <img src="logo.png" alt="Tatakai Logo" width="120" height="120" />
@@ -12,27 +12,38 @@
   [![WebOS](https://img.shields.io/badge/WebOS-Ready-FF6B35?style=for-the-badge&logo=lg&logoColor=white)](https://webostv.developer.lge.com/)
 </div>
 
-## 📖 Overview
+## Screenshots
+
+### Main Application (Web)
+![Tatakai Homepage](https://github.com/user-attachments/assets/931dd8ec-8b6e-4210-9126-175e816af93f)
+
+### Anime Details Page
+![One Piece Anime Page](https://github.com/user-attachments/assets/2baac6dc-cc85-4a07-b946-594095126f59)
+
+### WebOS TV Application
+![WebOS Tatakai Homepage](https://github.com/user-attachments/assets/9d505db6-da86-45e6-bb32-151646ef3761)
+
+## Overview
 
 Tatakai is a modern anime streaming platform that delivers a seamless viewing experience across web browsers and Smart TVs. Built with cutting-edge technologies, it features a Netflix-inspired interface with TV-optimized navigation and high-quality video streaming capabilities.
 
-### ✨ Key Features
+### Key Features
 
-- 🎬 **Advanced Video Streaming** - HLS.js adaptive streaming with quality selection
-- 📱 **Cross-Platform Design** - Responsive for desktop, mobile, tablet, and TV
-- 🎮 **TV Remote Navigation** - Complete D-pad support with spatial navigation
-- 🔍 **Intelligent Search** - Real-time anime search with fuzzy matching
-- 📊 **Dynamic Rankings** - Top 10 anime lists (Daily/Weekly/Monthly)
-- 🎯 **Hero Spotlight** - Auto-rotating featured anime with cinematic presentation
-- 🎨 **Modern UI/UX** - Dark theme with glassmorphism and smooth animations
-- ⚡ **Performance Optimized** - Code splitting, lazy loading, and WebOS optimization
-- 🌐 **Multi-Language Subtitles** - WebVTT subtitle support with language switching
-- 📺 **TV-First Experience** - Dedicated TV interface with focus management
-- 🎪 **Virtual Keyboard** - On-screen keyboard for TV search functionality
-- 🔄 **Auto-Continue** - Resume watching and episode auto-play
-- 📱 **Device Detection** - Automatic interface switching based on device
-- 🎭 **Genre Categories** - Browse by Action, Romance, Comedy, and more
-- 🏠 **Smart Home Page** - Personalized content recommendations
+- **🎬 Advanced Video Streaming** - HLS.js adaptive streaming with quality selection and enhanced video player controls
+- **📱 Cross-Platform Design** - Responsive design optimized for desktop, mobile, tablet, and TV
+- **🎮 TV Remote Navigation** - Complete D-pad support with spatial navigation using Lucide React icons
+- **🔍 Intelligent Search** - Real-time anime search with fuzzy matching and improved UI
+- **📊 Dynamic Rankings** - Top 10 anime lists with daily, weekly, and monthly rankings
+- **🎯 Hero Spotlight** - Auto-rotating featured anime with cinematic presentation
+- **🎨 Modern UI/UX** - Dark theme with glassmorphism effects and smooth animations
+- **⚡ Performance Optimized** - Code splitting, lazy loading, and WebOS optimization
+- **🌐 Multi-Language Subtitles** - WebVTT subtitle support with language switching
+- **📺 TV-First Experience** - Dedicated TV interface with enhanced focus management
+- **🎪 Virtual Keyboard** - On-screen keyboard for TV search functionality
+- **🔄 Auto-Continue** - Resume watching and episode auto-play features
+- **📱 Device Detection** - Automatic interface switching based on device type
+- **🎭 Genre Categories** - Browse by Action, Romance, Comedy, and more
+- **🏠 Smart Home Page** - Personalized content recommendations and improved spacing
 
 ## 🏗️ Project Structure
 
@@ -233,9 +244,9 @@ Tatakai/
    npm run package
    ```
 
-## 📱 Features Deep Dive
+## Features Deep Dive
 
-### 🎥 Video Streaming Architecture
+### Video Streaming Architecture
 - **Adaptive Bitrate Streaming** using HLS.js with automatic quality detection
 - **Multiple Video Sources** with fallback mechanisms for reliability
 - **Subtitle Engine** supporting WebVTT with multi-language switching
@@ -269,7 +280,7 @@ Tatakai/
 - **Code Splitting** by routes and components for optimal loading
 - **WebOS Integration** with platform-specific APIs and lifecycle management
 
-### 🌐 API Integration System
+### API Integration System
 - **HiAnime API Client** for comprehensive anime metadata and episodes
 - **Video Source Resolution** with multiple streaming server support
 - **Search Engine** with fuzzy matching and category filtering
@@ -277,7 +288,7 @@ Tatakai/
 - **Cache Management** for offline capability and performance
 - **Error Boundaries** with graceful degradation and user feedback
 
-## 🎮 Usage
+## Usage
 
 ### Web Interface
 1. **Browse Anime** - Scroll through featured and trending content
@@ -536,7 +547,7 @@ module.exports = {
 }
 ```
 
-## 🎯 Performance & Optimization
+## Performance & Optimization
 
 ### Performance Metrics
 - **Bundle Size**: < 2MB main bundle, < 5MB total application size

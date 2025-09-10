@@ -8,6 +8,7 @@ import { Focusable } from './tv/Focusable';
 import VerticalList from './tv/VerticalListNew';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Play } from 'lucide-react';
 
 interface Episode {
   number: number;
@@ -157,7 +158,7 @@ const HeroSection: React.FC<{
               <ActionButton
                 id="watch-now"
                 groupId="hero-actions"
-                icon={<span className="text-2xl">▶️</span>}
+                icon={<Play className="w-6 h-6" />}
                 label="Watch Now"
                 onClick={onWatchClick}
                 variant="primary"
@@ -267,7 +268,7 @@ const EpisodesSection: React.FC<{
                 {/* Play Icon */}
                 <div className="flex-shrink-0">
                   <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center">
-                    <span className="text-2xl">▶️</span>
+                    <Play className="w-6 h-6 text-white" />
                   </div>
                 </div>
               </div>

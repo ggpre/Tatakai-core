@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { AnimeAPI } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search } from 'lucide-react';
+import { Search, Gamepad2 } from 'lucide-react';
 import Image from 'next/image';
 
 interface ApiAnime {
@@ -64,9 +64,9 @@ const TVSearchPage = () => {
 
     setLoading(true);
     try {
-      console.log('🔍 Searching for:', query);
+      console.log('Searching for:', query);
       const response = await AnimeAPI.searchAnime(query);
-      console.log('📡 Full API response:', response);
+      console.log('Full API response:', response);
       
       if (response.success && response.data) {
         // Check different possible data structures
@@ -329,7 +329,10 @@ const TVSearchPage = () => {
 
           {/* Instructions */}
           <div className="mt-6 p-4 bg-gray-800 rounded-lg">
-            <h3 className="font-bold mb-2">🎮 TV Remote Controls:</h3>
+            <h3 className="font-bold mb-2 flex items-center">
+              <Gamepad2 className="w-5 h-5 mr-2" />
+              TV Remote Controls:
+            </h3>
             <div className="text-sm space-y-1 text-gray-300">
               <div>• Arrow Keys: Navigate keyboard/results</div>
               <div>• Enter: Select key or anime</div>
