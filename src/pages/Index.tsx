@@ -3,7 +3,6 @@ import { Background } from "@/components/layout/Background";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { Header } from "@/components/layout/Header";
-import { AppDownloadBanner } from "@/components/layout/AppDownloadBanner";
 import { HeroSection } from "@/components/anime/HeroSection";
 import { TrendingGrid } from "@/components/anime/TrendingGrid";
 import { LatestEpisodes } from "@/components/anime/LatestEpisodes";
@@ -37,9 +36,6 @@ const Index = () => {
 
       <main className="relative z-10 pl-6 md:pl-32 pr-6 py-6 max-w-[1800px] mx-auto pb-24 md:pb-6">
         <Header />
-
-        {/* App Download Banner */}
-        <AppDownloadBanner />
 
         {isLoading ? (
           <>

@@ -2,6 +2,7 @@ import { LayoutGrid, Search, User, LogIn, Users, Heart, TrendingUp, Settings } f
 import { NavIcon } from "@/components/ui/NavIcon";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -62,12 +63,13 @@ export function MobileNav() {
       {user && !isBanned ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="focus:outline-none">
-              <NavIcon 
-                icon={User} 
-                active={location.pathname.startsWith('/@') || isActive("/profile") || isActive("/settings")} 
-                onClick={(e) => e.preventDefault()}
-              />
+            <button className="focus:outline-none active:scale-95 transition-transform">
+              <Avatar className={`w-10 h-10 cursor-pointer transition-all ${location.pathname.startsWith('/@') || isActive("/profile") || isActive("/settings") ? 'ring-2 ring-primary' : 'hover:ring-2 hover:ring-primary/50'}`}>
+                <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.display_name || 'User'} />
+                <AvatarFallback className="bg-gradient-to-br from-primary to-secondary text-primary-foreground font-bold text-sm">
+                  {profile?.display_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U'}
+                </AvatarFallback>
+              </Avatar>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" side="top" className="mb-2">

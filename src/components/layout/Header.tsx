@@ -1,5 +1,5 @@
 import { Search, User, LogOut, Shield } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -14,8 +14,25 @@ import {
 
 export function Header() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [systemStatus, setSystemStatus] = useState<'operational' | 'degraded' | 'checking'>('checking');
   const navigate = useNavigate();
   const { user, profile, isAdmin, isBanned, signOut, isLoading } = useAuth();
+
+  useEffect(() => {
+    // Simple check to determine system status
+    const checkStatus = async () => {
+      try {
+        const response = await fetch(window.location.origin, { method: 'HEAD' });
+        setSystemStatus(response.ok ? 'operational' : 'degraded');
+      } catch {
+        setSystemStatus('degraded');
+      }
+    };
+    checkStatus();
+    // Recheck every 5 minutes
+    const interval = setInterval(checkStatus, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,6 +46,28 @@ export function Header() {
     navigate('/');
   };
 
+  const getStatusColor = () => {
+    switch (systemStatus) {
+      case 'operational':
+        return 'bg-green-500';
+      case 'degraded':
+        return 'bg-amber-500';
+      default:
+        return 'bg-gray-500';
+    }
+  };
+
+  const getStatusTooltip = () => {
+    switch (systemStatus) {
+      case 'operational':
+        return 'All systems operational';
+      case 'degraded':
+        return 'Some services degraded';
+      default:
+        return 'Checking status...';
+    }
+  };
+
   return (
     <header className="hidden md:flex justify-between items-center mb-12 px-2">
       <div className="flex items-center gap-3">
@@ -40,6 +79,15 @@ export function Header() {
             BANNED
           </span>
         )}
+        {/* Status Indicator */}
+        <Link 
+          to="/status" 
+          className="flex items-center gap-2 px-3 py-1 rounded-full bg-muted/30 hover:bg-muted/50 transition-all group"
+          title={getStatusTooltip()}
+        >
+          <span className={`w-2 h-2 rounded-full ${getStatusColor()} ${systemStatus === 'operational' ? 'animate-pulse' : ''}`}></span>
+          <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">Status</span>
+        </Link>
       </div>
       
       <div className="flex items-center gap-4 md:gap-6">
@@ -67,9 +115,9 @@ export function Header() {
         ) : user && !isBanned ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background rounded-full">
+              <button className="focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background rounded-full active:scale-95 transition-transform">
                 <Avatar className="w-10 h-10 cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all">
-                  <AvatarImage src={profile?.avatar_url || undefined} />
+                  <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.display_name || 'User'} />
                   <AvatarFallback className="bg-gradient-to-br from-primary to-secondary text-primary-foreground font-bold">
                     {profile?.display_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U'}
                   </AvatarFallback>

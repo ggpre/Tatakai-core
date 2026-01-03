@@ -1,268 +1,403 @@
 import { Background } from '@/components/layout/Background';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { MobileNav } from '@/components/layout/MobileNav';
-import { GlassPanel } from '@/components/ui/GlassPanel';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft, Download, Smartphone, Monitor, Clock, Sparkles, Zap, Shield, Rocket } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Download, Smartphone, Monitor, CheckCircle, ArrowRight, Apple, ChevronDown } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 
 export default function DownloadPage() {
-  const navigate = useNavigate();
+  const [selectedOS, setSelectedOS] = useState<'mac' | 'win'>('mac');
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [isDownloading, setIsDownloading] = useState(false);
 
-  const apps = [
-    {
-      platform: 'Android',
-      icon: Smartphone,
-      description: 'Download Tatakai for Android devices',
-      version: 'Coming Soon',
-      tagline: 'Anime on the go, anywhere you are',
-      features: [
-        { icon: Download, text: 'Offline downloads', highlight: true },
-        { icon: Zap, text: 'Lightning-fast streaming' },
-        { icon: Shield, text: 'Ad-free experience' },
-        { icon: Sparkles, text: 'Picture-in-picture mode' }
-      ],
-      available: false,
-      gradient: 'from-green-500 via-emerald-500 to-teal-600',
-      glowColor: 'rgba(34, 197, 94, 0.4)',
-      accentColor: 'text-green-400'
-    },
-    {
-      platform: 'Windows',
-      icon: Monitor,
-      description: 'Download Tatakai for Windows PC',
-      version: 'Coming Soon',
-      tagline: 'Desktop power meets streaming excellence',
-      features: [
-        { icon: Rocket, text: 'Hardware acceleration', highlight: true },
-        { icon: Zap, text: 'Keyboard shortcuts' },
-        { icon: Shield, text: 'Enhanced privacy mode' },
-        { icon: Sparkles, text: 'Multi-window support' }
-      ],
-      available: false,
-      gradient: 'from-blue-500 via-cyan-500 to-indigo-600',
-      glowColor: 'rgba(59, 130, 246, 0.4)',
-      accentColor: 'text-blue-400'
-    }
-  ];
+  const handleDownload = () => {
+    setIsDownloading(true);
+    setDownloadProgress(0);
+    
+    // Simulate download progress
+    const interval = setInterval(() => {
+      setDownloadProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          setTimeout(() => {
+            setIsDownloading(false);
+            setDownloadProgress(0);
+          }, 1000);
+          return 100;
+        }
+        return prev + 2;
+      });
+    }, 50);
+  };
+
+  useEffect(() => {
+    // Initialize Lucide icons
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/lucide@latest';
+    document.head.appendChild(script);
+    
+    return () => {
+      document.head.removeChild(script);
+    };
+  }, []);
 
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
+    <div className="min-h-screen bg-black text-white overflow-x-hidden">
+      {/* Subtle Noise Texture */}
+      <div 
+        className="fixed inset-0 pointer-events-none z-0 opacity-40"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E")`
+        }}
+      />
+
+      {/* Ambient Lighting (White Spotlights) */}
+      <div className="fixed top-0 left-0 w-full h-screen z-0 overflow-hidden bg-black">
+        <motion.div 
+          className="absolute -top-20 -left-10 w-[60vw] h-[60vw] rounded-full opacity-15 blur-[100px]"
+          style={{ background: '#ffffff' }}
+          animate={{
+            x: [0, 20, -20],
+            y: [0, 40, -20],
+            scale: [1, 1.05, 0.95]
+          }}
+          transition={{
+            duration: 25,
+            repeat: Infinity,
+            repeatType: "reverse",
+            ease: "easeInOut"
+          }}
+        />
+        <motion.div 
+          className="absolute -bottom-20 -right-10 w-[50vw] h-[50vw] rounded-full opacity-15 blur-[100px]"
+          style={{ background: '#333333' }}
+          animate={{
+            x: [-20, 20, 0],
+            y: [0, -40, 20],
+            scale: [1, 1.05, 0.95]
+          }}
+          transition={{
+            duration: 25,
+            repeat: Infinity,
+            repeatType: "reverse",
+            ease: "easeInOut",
+            delay: 5
+          }}
+        />
+      </div>
+
       <Background />
       <Sidebar />
 
-      <main className="relative z-10 pl-6 md:pl-32 pr-6 py-6 max-w-[1400px] mx-auto pb-24 md:pb-6">
-        {/* Floating Background Elements */}
-        <div className="absolute top-20 right-10 w-72 h-72 bg-primary/5 rounded-full blur-[100px] animate-pulse" />
-        <div className="absolute bottom-20 left-10 w-96 h-96 bg-secondary/5 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '1s' }} />
-        
-        {/* Header */}
-        <div className="relative z-10">
-          <motion.button
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-8 group"
-          >
-            <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-            <span>Back</span>
-          </motion.button>
+      <main className="relative z-10 pl-6 md:pl-32 pr-6 py-6 max-w-7xl mx-auto pb-24 md:pb-6">
+        {/* Navigation */}
+        <nav className="flex justify-between items-center mb-16 px-2">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 flex items-center justify-center">
+              <img 
+                src="/file_00000000c1e471fa8cb20102e33bdbed-removebg-preview.png" 
+                alt="Tatakai Logo" 
+                className="w-full h-full object-contain"
+              />
+            </div>
+            <span className="font-bold text-xl tracking-tighter uppercase">Tatakai</span>
+          </div>
+          <div className="hidden md:flex gap-8 text-xs uppercase tracking-widest font-semibold text-gray-500">
+            <a href="/" className="hover:text-white transition-colors">Home</a>
+            <a href="/community" className="hover:text-white transition-colors">Community</a>
+            <a href="/trending" className="hover:text-white transition-colors">Trending</a>
+          </div>
+          <a href="/auth" className="text-xs font-semibold uppercase tracking-wider text-white hover:text-gray-300 transition-colors border border-white/20 px-4 py-2 rounded-full hover:bg-white/10">
+            Account
+          </a>
+        </nav>
 
-          {/* Hero Section */}
-          <div className="text-center mb-16 relative">
-            {/* Animated Download Icon */}
-            <motion.div
-              initial={{ scale: 0, rotate: -180 }}
-              animate={{ scale: 1, rotate: 0 }}
-              transition={{ type: "spring", stiffness: 200, damping: 15 }}
-              className="inline-block mb-6"
-            >
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-primary to-secondary rounded-3xl blur-2xl opacity-50 animate-pulse" />
-                <div className="relative p-6 bg-gradient-to-br from-primary to-secondary rounded-3xl shadow-2xl">
-                  <Download className="w-16 h-16 text-white" />
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="font-display text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-primary via-secondary to-primary bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]"
-            >
-              Download Tatakai
-            </motion.h1>
+        {/* HERO Section */}
+        <section className="min-h-[80vh] flex flex-col justify-center items-center p-4 relative">
+          <div className="max-w-6xl w-full grid lg:grid-cols-2 gap-16 items-center">
             
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="text-muted-foreground text-xl md:text-2xl max-w-3xl mx-auto leading-relaxed"
-            >
-              Take your anime experience with you. Native apps for Android and Windows are{' '}
-              <span className="relative inline-block">
-                <span className="relative z-10 font-semibold text-foreground">coming soon!</span>
-                <span className="absolute bottom-1 left-0 w-full h-2 bg-primary/20 -rotate-1" />
-              </span>
-            </motion.p>
-
-            {/* Coming Soon Badge */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.4 }}
-              className="inline-flex items-center gap-2 mt-8 px-6 py-3 rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 backdrop-blur-sm"
-            >
-              <Clock className="w-5 h-5 text-amber-400 animate-spin" style={{ animationDuration: '3s' }} />
-              <span className="text-amber-400 font-semibold">In Active Development</span>
-              <Sparkles className="w-5 h-5 text-amber-400" />
-            </motion.div>
-          </div>
-
-          {/* Apps Grid */}
-          <div className="grid lg:grid-cols-2 gap-8 mb-16">
-            {apps.map((app, index) => (
-              <motion.div
-                key={app.platform}
-                initial={{ opacity: 0, y: 40 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 + index * 0.2 }}
-              >
-                <GlassPanel className="group hover:scale-[1.02] transition-all duration-500 relative overflow-hidden">
-                  {/* Animated Glow Effect */}
-                  <div 
-                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                    style={{
-                      background: `radial-gradient(circle at 50% 0%, ${app.glowColor}, transparent 70%)`
-                    }}
-                  />
-                  
-                  <div className="relative p-8">
-                    {/* Platform Header with Icon */}
-                    <div className="flex items-start justify-between mb-6">
-                      <div className="flex items-center gap-6">
-                        <motion.div 
-                          whileHover={{ rotate: 360, scale: 1.1 }}
-                          transition={{ duration: 0.6 }}
-                          className={`p-5 rounded-3xl bg-gradient-to-br ${app.gradient} shadow-2xl relative`}
-                        >
-                          <div className="absolute inset-0 rounded-3xl bg-white/20 blur-xl" />
-                          <app.icon className="relative w-12 h-12 text-white" />
-                        </motion.div>
-                        <div>
-                          <h2 className="font-display text-3xl font-bold mb-2">{app.platform}</h2>
-                          <p className={`text-sm font-medium ${app.accentColor}`}>{app.tagline}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Features Grid */}
-                    <div className="grid grid-cols-1 gap-3 mb-8">
-                      {app.features.map((feature, idx) => (
-                        <motion.div
-                          key={idx}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.7 + idx * 0.1 }}
-                          className={`flex items-center gap-4 p-4 rounded-xl transition-all ${
-                            feature.highlight 
-                              ? `bg-gradient-to-r ${app.gradient} bg-opacity-10 border border-white/10` 
-                              : 'bg-muted/30 hover:bg-muted/50'
-                          }`}
-                        >
-                          <div className={`p-2 rounded-lg ${feature.highlight ? 'bg-white/10' : 'bg-muted'}`}>
-                            <feature.icon className={`w-5 h-5 ${feature.highlight ? 'text-white' : 'text-foreground'}`} />
-                          </div>
-                          <span className={`font-medium ${feature.highlight ? 'text-white' : ''}`}>
-                            {feature.text}
-                          </span>
-                          {feature.highlight && (
-                            <Sparkles className="w-4 h-4 text-yellow-400 ml-auto" />
-                          )}
-                        </motion.div>
-                      ))}
-                    </div>
-
-                    {/* Download Button */}
-                    <Button
-                      disabled={!app.available}
-                      className={`w-full h-14 text-lg font-bold bg-gradient-to-r ${app.gradient} hover:shadow-2xl transition-all duration-300 relative overflow-hidden group/btn`}
-                      size="lg"
-                    >
-                      <span className="absolute inset-0 bg-white/0 group-hover/btn:bg-white/10 transition-colors duration-300" />
-                      <Clock className="w-6 h-6 mr-3 relative z-10" />
-                      <span className="relative z-10">Coming Soon to {app.platform}</span>
-                    </Button>
-                  </div>
-                </GlassPanel>
-              </motion.div>
-            ))}
-          </div>
-
-          {/* Bottom CTA Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.9 }}
-          >
-            <GlassPanel className="p-10 text-center relative overflow-hidden">
-              {/* Animated Background Pattern */}
-              <div className="absolute inset-0 opacity-5">
-                <div className="absolute top-0 left-1/4 w-32 h-32 bg-primary rounded-full blur-3xl animate-pulse" />
-                <div className="absolute bottom-0 right-1/4 w-32 h-32 bg-secondary rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+            {/* Left Column: Info */}
+            <div className="space-y-10 order-2 lg:order-1">
+              <div className="space-y-6">
+                <div className="inline-flex items-center gap-3 px-4 py-1.5 rounded-full border border-white/20 bg-white/5 text-gray-300 text-[10px] font-bold uppercase tracking-widest">
+                  <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
+                  Version 2.0.0 Live
+                </div>
+                <h1 className="text-6xl md:text-8xl font-medium leading-[0.9] tracking-tight">
+                  Pure <br/>
+                  <span className="bg-gradient-to-b from-white to-gray-600 bg-clip-text text-transparent">
+                    Function.
+                  </span>
+                </h1>
+                <p className="text-lg text-gray-500 max-w-md leading-relaxed font-light">
+                  Stripped of distractions. The ultimate anime streaming engine for minimalists. Experience viewing in its purest form.
+                </p>
               </div>
 
-              <div className="relative z-10">
-                <motion.div
-                  animate={{ rotate: [0, 10, -10, 0] }}
-                  transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-                  className="inline-block mb-4"
-                >
-                  <Rocket className="w-12 h-12 text-primary" />
-                </motion.div>
+              {/* Specs Tags */}
+              <div className="flex flex-wrap items-center gap-4 text-[10px] uppercase tracking-widest text-gray-600 font-bold">
+                <span className="px-3 py-1 border border-white/10 rounded">Android</span>
+                <span className="px-3 py-1 border border-white/10 rounded">Windows</span>
+                <span className="px-3 py-1 border border-white/10 rounded">macOS</span>
+                <span className="text-gray-400 ml-2">Coming Soon</span>
+              </div>
+            </div>
+
+            {/* Right Column: Download Card */}
+            <div className="order-1 lg:order-2 flex flex-col items-center">
+              <div 
+                className="p-1 rounded-2xl w-full max-w-md relative group"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  backdropFilter: 'blur(40px)',
+                  WebkitBackdropFilter: 'blur(40px)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 1)'
+                }}
+              >
+                <div className="absolute -inset-10 bg-white/5 rounded-[50%] opacity-0 group-hover:opacity-100 blur-3xl transition duration-1000"></div>
                 
-                <h3 className="font-display text-3xl font-bold mb-4 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                  Stay in the Loop
-                </h3>
-                <p className="text-muted-foreground text-lg mb-6 max-w-2xl mx-auto">
-                  Be the first to experience the future of anime streaming. Our native apps are being crafted with love and attention to detail.
-                </p>
-                
-                <div className="flex flex-wrap justify-center gap-4">
-                  <motion.div
-                    whileHover={{ scale: 1.05, y: -2 }}
-                    className="px-6 py-3 rounded-full bg-gradient-to-r from-primary/20 to-primary/10 backdrop-blur-sm border border-primary/20"
+                <div className="bg-black rounded-xl p-8 relative overflow-hidden border border-white/5">
+                  <div className="flex flex-col items-center mb-10 relative z-10">
+                    <motion.div 
+                      className="mb-8 perspective-1000"
+                      animate={{
+                        y: [0, -10, 0],
+                        rotateX: [5, 0, 5],
+                        rotateY: [-5, 5, -5]
+                      }}
+                      transition={{
+                        duration: 8,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
+                    >
+                      <div 
+                        className="w-[120px] h-[120px] rounded-[28px] flex items-center justify-center relative"
+                        style={{
+                          background: 'linear-gradient(135deg, #111111 0%, #000000 100%)',
+                          boxShadow: '0 30px 60px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.2)',
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          transformStyle: 'preserve-3d'
+                        }}
+                      >
+                        <div 
+                          className="absolute -inset-[1px] rounded-[29px]"
+                          style={{
+                            background: 'linear-gradient(180deg, rgba(255,255,255,0.2), transparent)',
+                            WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                            WebkitMaskComposite: 'xor',
+                            maskComposite: 'exclude',
+                            pointerEvents: 'none',
+                            padding: '1px'
+                          }}
+                        />
+                        <img 
+                          src="/file_00000000c1e471fa8cb20102e33bdbed-removebg-preview.png" 
+                          alt="Tatakai Logo" 
+                          className="w-16 h-16 object-contain relative z-10"
+                        />
+                      </div>
+                    </motion.div>
+                    <h2 className="text-3xl font-medium text-white mb-1 tracking-tight">Tatakai Pro</h2>
+                    <p className="text-xs font-mono text-gray-500 uppercase tracking-widest">Architect Edition</p>
+                  </div>
+
+                  <div className="space-y-4 mb-8">
+                    <div className="grid grid-cols-2 gap-px bg-gray-800 p-px rounded-md overflow-hidden">
+                      <button 
+                        onClick={() => setSelectedOS('mac')}
+                        className={`flex items-center justify-center gap-2 py-3 text-xs font-bold uppercase tracking-wide transition-all ${
+                          selectedOS === 'mac' ? 'bg-white text-black' : 'bg-black text-gray-500 hover:text-white'
+                        }`}
+                      >
+                        <Apple className="w-3 h-3 fill-current" /> macOS
+                      </button>
+                      <button 
+                        onClick={() => setSelectedOS('win')}
+                        className={`flex items-center justify-center gap-2 py-3 text-xs font-bold uppercase tracking-wide transition-all ${
+                          selectedOS === 'win' ? 'bg-white text-black' : 'bg-black text-gray-500 hover:text-white'
+                        }`}
+                      >
+                        <Monitor className="w-3 h-3" /> Windows
+                      </button>
+                    </div>
+                    <div className="flex justify-between items-center text-[10px] uppercase tracking-wider text-gray-600 px-1 font-mono">
+                      <span>v2.0.0 (x64)</span>
+                      <a href="#" className="hover:text-white transition-colors underline decoration-gray-800 underline-offset-4">Changelog</a>
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={handleDownload}
+                    disabled={isDownloading}
+                    className="relative w-full h-14 rounded-lg overflow-hidden group/btn cursor-pointer focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black disabled:cursor-not-allowed active:scale-95 transition-transform"
                   >
-                    <span className="font-semibold text-primary flex items-center gap-2">
-                      <Rocket className="w-4 h-4" />
-                      In Development
-                    </span>
-                  </motion.div>
-                  <motion.div
-                    whileHover={{ scale: 1.05, y: -2 }}
-                    className="px-6 py-3 rounded-full bg-gradient-to-r from-secondary/20 to-secondary/10 backdrop-blur-sm border border-secondary/20"
-                  >
-                    <span className="font-semibold text-secondary flex items-center gap-2">
-                      <Zap className="w-4 h-4" />
-                      Mobile First
-                    </span>
-                  </motion.div>
-                  <motion.div
-                    whileHover={{ scale: 1.05, y: -2 }}
-                    className="px-6 py-3 rounded-full bg-gradient-to-r from-accent/20 to-accent/10 backdrop-blur-sm border border-accent/20"
-                  >
-                    <span className="font-semibold flex items-center gap-2">
-                      <Shield className="w-4 h-4" />
-                      Secure & Private
-                    </span>
-                  </motion.div>
+                    <div 
+                      className="absolute inset-0 bg-white group-hover/btn:bg-gray-100 transition-colors"
+                    />
+                    <div 
+                      className="absolute bottom-0 left-0 h-full bg-black/10 transition-all duration-100"
+                      style={{ width: `${downloadProgress}%` }}
+                    />
+                    <div className="relative z-10 flex items-center justify-center gap-3 w-full h-full font-bold text-black uppercase tracking-widest text-xs">
+                      <span>{isDownloading ? `Downloading ${downloadProgress}%` : 'Initialize Download'}</span>
+                      {!isDownloading && <ArrowRight className="w-4 h-4" />}
+                    </div>
+                  </button>
                 </div>
               </div>
-            </GlassPanel>
+            </div>
+          </div>
+          
+          {/* Scroll Indicator */}
+          <motion.div 
+            className="absolute bottom-10 left-1/2 transform -translate-x-1/2"
+            animate={{ y: [0, -5, 0, -3, 0] }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+          >
+            <ChevronDown className="w-6 h-6 text-gray-600" />
           </motion.div>
-        </div>
+        </section>
+
+        {/* LOGOS Section */}
+        <section className="py-12 border-y border-white/5 bg-black/50 rounded-xl backdrop-blur-sm mb-16">
+          <div className="max-w-6xl mx-auto px-6 text-center">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-gray-600 mb-8 font-mono">Trusted by Anime Fans Worldwide</p>
+            <div className="flex flex-wrap justify-center gap-12 md:gap-20 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
+              <span className="text-xl font-bold font-mono tracking-tighter text-gray-400">STREAMERS</span>
+              <span className="text-xl font-bold font-mono tracking-tighter text-gray-400">OTAKU_HQ</span>
+              <span className="text-xl font-bold font-mono tracking-tighter text-gray-400">ANIME.SYS</span>
+              <span className="text-xl font-bold font-mono tracking-tighter text-gray-400">VAULT</span>
+              <span className="text-xl font-bold font-mono tracking-tighter text-gray-400">NEXUS</span>
+            </div>
+          </div>
+        </section>
+
+        {/* FEATURES Grid */}
+        <section className="py-16 relative">
+          <div className="max-w-6xl mx-auto px-6">
+            <div className="mb-20">
+              <h2 className="text-4xl md:text-5xl font-medium mb-6">The Architecture</h2>
+              <div className="h-px w-20 bg-white"></div>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-8">
+              {/* Feature 1 */}
+              <div 
+                className="p-8 rounded-xl hover:bg-white/5 transition-all duration-300 group"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)'
+                }}
+              >
+                <div className="w-12 h-12 bg-white/5 rounded-lg flex items-center justify-center mb-6 group-hover:bg-white group-hover:text-black transition-colors">
+                  <Download className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold mb-3">Offline Access</h3>
+                <p className="text-gray-500 text-sm leading-relaxed">
+                  Download your favorite episodes and watch them anywhere, anytime. No internet required once downloaded.
+                </p>
+              </div>
+
+              {/* Feature 2 */}
+              <div 
+                className="p-8 rounded-xl hover:bg-white/5 transition-all duration-300 group"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)'
+                }}
+              >
+                <div className="w-12 h-12 bg-white/5 rounded-lg flex items-center justify-center mb-6 group-hover:bg-white group-hover:text-black transition-colors">
+                  <Smartphone className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold mb-3">Native Performance</h3>
+                <p className="text-gray-500 text-sm leading-relaxed">
+                  Built specifically for your device. Experience lightning-fast performance with optimized resource usage.
+                </p>
+              </div>
+
+              {/* Feature 3 */}
+              <div 
+                className="p-8 rounded-xl hover:bg-white/5 transition-all duration-300 group"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)'
+                }}
+              >
+                <div className="w-12 h-12 bg-white/5 rounded-lg flex items-center justify-center mb-6 group-hover:bg-white group-hover:text-black transition-colors">
+                  <CheckCircle className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold mb-3">Seamless Sync</h3>
+                <p className="text-gray-500 text-sm leading-relaxed">
+                  Your watch history, favorites, and playlists sync across all devices. Pick up right where you left off.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* SPECS / TABLE */}
+        <section className="py-16 rounded-xl border-t border-white/5 relative">
+          <div className="max-w-4xl mx-auto px-6">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl font-medium mb-4">System Requirements</h2>
+              <p className="text-gray-500 text-sm font-mono uppercase tracking-widest">Minimum Specifications</p>
+            </div>
+
+            <div className="border border-white/10 rounded-lg overflow-hidden">
+              <div className="grid grid-cols-2 p-6 border-b border-white/10 bg-white/5">
+                <div className="text-sm font-bold text-gray-400 uppercase tracking-wider">Component</div>
+                <div className="text-sm font-bold text-gray-400 uppercase tracking-wider">Requirement</div>
+              </div>
+              
+              <div className="grid grid-cols-2 p-6 border-b border-white/5 hover:bg-white/5 transition-colors">
+                <div className="text-sm font-medium text-white">Operating System</div>
+                <div className="text-sm text-gray-400 font-mono">Android 8.0+ / Windows 10 / macOS 11.0+</div>
+              </div>
+
+              <div className="grid grid-cols-2 p-6 border-b border-white/5 hover:bg-white/5 transition-colors">
+                <div className="text-sm font-medium text-white">Processor</div>
+                <div className="text-sm text-gray-400 font-mono">Dual-core 1.5 GHz or higher</div>
+              </div>
+
+              <div className="grid grid-cols-2 p-6 border-b border-white/5 hover:bg-white/5 transition-colors">
+                <div className="text-sm font-medium text-white">Memory</div>
+                <div className="text-sm text-gray-400 font-mono">4 GB RAM minimum</div>
+              </div>
+
+              <div className="grid grid-cols-2 p-6 hover:bg-white/5 transition-colors">
+                <div className="text-sm font-medium text-white">Storage</div>
+                <div className="text-sm text-gray-400 font-mono">500 MB available space</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer className="w-full py-16 bg-black/50 border-t border-white/10 rounded-xl backdrop-blur-sm relative mt-16">
+          <div className="max-w-6xl mx-auto px-6 grid md:grid-cols-4 gap-12">
+            <div className="col-span-1 md:col-span-2">
+              <div className="flex items-center gap-2 mb-6">
+                <div className="w-6 h-6 flex items-center justify-center">
+                  <img 
+                    src="/file_00000000c1e471fa8cb20102e33bdbed-removebg-preview.png" 
+                    alt="Tatakai Logo" 
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+                <span className="font-bold text-lg tracking-tighter uppercase">Tatakai</span>
+              </div>
+              <p className="text-gray-500 text-sm leading-relaxed max-w-sm">
+                Redefining anime streaming through purity of design and function. Built for the fans of tomorrow.
+              </p>
+            </div>
+          </div>
+        </footer>
       </main>
 
       <MobileNav />
