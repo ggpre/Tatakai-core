@@ -1,21 +1,23 @@
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   useEpisodeServers,
-  useStreamingSources,
   useEpisodes,
   useAnimeInfo,
 } from "@/hooks/useAnimeData";
+import { useCombinedSources } from "@/hooks/useCombinedSources";
 import { Background } from "@/components/layout/Background";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { GlassPanel } from "@/components/ui/GlassPanel";
 import { Skeleton } from "@/components/ui/skeleton-custom";
 import { VideoPlayer } from "@/components/video/VideoPlayer";
+import { EmbedPlayer } from "@/components/video/EmbedPlayer";
 import { getFriendlyServerName } from "@/lib/serverNames";
 import { updateLocalContinueWatching, getLocalContinueWatching } from "@/lib/localStorage";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUpdateWatchHistory } from '@/hooks/useWatchHistory';
 import { useViewTracker, useAnimeViewCount, formatViewCount } from '@/hooks/useViews';
+import { getProxiedVideoUrl } from "@/lib/api";
 import {
   ArrowLeft,
   ChevronLeft,
@@ -25,6 +27,7 @@ import {
   Server,
   ListVideo,
   Eye,
+  Globe,
 } from "lucide-react";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 
@@ -71,6 +74,12 @@ export default function WatchPage() {
     return saved?.category || "sub";
   });
   const [selectedServerIndex, setSelectedServerIndex] = useState(-1); // -1 = not yet initialized
+  const [selectedLangCode, setSelectedLangCode] = useState<string | null>(() => {
+    // Load saved language preference from continue watching
+    const savedHistory = getLocalContinueWatching();
+    const saved = savedHistory.find(h => h.episodeId === decodeURIComponent(episodeId || ''));
+    return saved?.languageCode || null;
+  });
   const [preferredServerName, setPreferredServerName] = useState<string | null>(() => {
     // Check if there's a saved server preference from continue watching
     const savedHistory = getLocalContinueWatching();
@@ -118,12 +127,31 @@ export default function WatchPage() {
 
   const currentServer = availableServers[Math.max(0, selectedServerIndex)];
 
+  // Find current episode BEFORE using it in hooks
+  const currentEpisodeIndex = useMemo(() => {
+    return episodesData?.episodes.findIndex(
+      (ep) => ep.episodeId === decodedEpisodeId
+    ) ?? -1;
+  }, [episodesData, decodedEpisodeId]);
+
+  const currentEpisode = episodesData?.episodes[currentEpisodeIndex];
+  const prevEpisode =
+    currentEpisodeIndex > 0
+      ? episodesData?.episodes[currentEpisodeIndex - 1]
+      : null;
+  const nextEpisode =
+    currentEpisodeIndex < (episodesData?.episodes.length ?? 0) - 1
+      ? episodesData?.episodes[currentEpisodeIndex + 1]
+      : null;
+
   const {
     data: sourcesData,
     isLoading: loadingSources,
     error: sourcesError,
-  } = useStreamingSources(
+  } = useCombinedSources(
     decodedEpisodeId,
+    animeData?.anime.info.name,
+    currentEpisode?.number,
     currentServer?.serverName || "hd-2",
     category
   );
@@ -131,11 +159,24 @@ export default function WatchPage() {
   // Fetch subtitles from sub server when watching dub (dub servers often don't include subs)
   const {
     data: subSourcesData,
-  } = useStreamingSources(
+  } = useCombinedSources(
     category === "dub" ? decodedEpisodeId : undefined, // Only fetch when in dub mode
+    animeData?.anime.info.name,
+    currentEpisode?.number,
     currentServer?.serverName || "hd-2",
     "sub"
   );
+
+  // Auto-select WatchAnimeWorld language if saved preference exists
+  useEffect(() => {
+    if (sourcesData?.hasWatchAnimeWorld && selectedLangCode && selectedServerIndex === -1) {
+      // Check if the saved language exists in current sources
+      const langExists = sourcesData.sources.some(s => s.langCode === selectedLangCode);
+      if (langExists) {
+        setSelectedServerIndex(-2); // Select WatchAnimeWorld
+      }
+    }
+  }, [sourcesData?.hasWatchAnimeWorld, selectedLangCode, selectedServerIndex, sourcesData?.sources]);
 
   // Normalize subtitles - in dub mode, ALWAYS prefer sub source subs since dub rarely has them
   const normalizedSubtitles = useMemo(() => {
@@ -165,22 +206,13 @@ export default function WatchPage() {
     );
   }, [sourcesData, subSourcesData, category]);
 
-  // Find current episode
-  const currentEpisodeIndex = useMemo(() => {
-    return episodesData?.episodes.findIndex(
-      (ep) => ep.episodeId === decodedEpisodeId
-    ) ?? -1;
-  }, [episodesData, decodedEpisodeId]);
-
-  const currentEpisode = episodesData?.episodes[currentEpisodeIndex];
-  const prevEpisode =
-    currentEpisodeIndex > 0
-      ? episodesData?.episodes[currentEpisodeIndex - 1]
-      : null;
-  const nextEpisode =
-    currentEpisodeIndex < (episodesData?.episodes.length ?? 0) - 1
-      ? episodesData?.episodes[currentEpisodeIndex + 1]
-      : null;
+  // Compute selected embed source for WatchAnimeWorld
+  const selectedEmbedSource = useMemo(() => {
+    if (selectedServerIndex !== -2 || !selectedLangCode || !sourcesData) return null;
+    return sourcesData.sources.find(
+      s => s.langCode === selectedLangCode && (s.isEmbed || (!s.isM3U8 && s.needsHeadless))
+    ) || null;
+  }, [selectedServerIndex, selectedLangCode, sourcesData]);
 
   const updateWatchHistory = useUpdateWatchHistory();
   const initialSavedRef = useRef<string | null>(null);
@@ -270,6 +302,41 @@ export default function WatchPage() {
     setSelectedServerIndex(nextIndex);
   };
 
+  // Progress update callback for VideoPlayer - must be defined outside JSX
+  const handleProgressUpdate = useCallback((progressSeconds: number, durationSeconds: number, completed?: boolean) => {
+    if (!animeData || !currentEpisode) return;
+    try {
+      if (user) {
+        // Use mutateAsync to avoid triggering re-renders during render
+        updateWatchHistory.mutateAsync({
+          animeId,
+          animeName: animeData.anime.info.name,
+          animePoster: animeData.anime.info.poster,
+          episodeId: decodedEpisodeId,
+          episodeNumber: currentEpisode.number,
+          progressSeconds: progressSeconds,
+          durationSeconds: durationSeconds,
+          completed: !!completed,
+        }).catch(e => console.warn('Failed to save progress to DB:', e));
+      }
+      // Always save to localStorage (for server preference and as backup)
+      updateLocalContinueWatching({
+        animeId,
+        animeName: animeData.anime.info.name,
+        animePoster: animeData.anime.info.poster,
+        episodeId: decodedEpisodeId,
+        episodeNumber: currentEpisode.number,
+        progressSeconds: progressSeconds,
+        durationSeconds: durationSeconds || 0,
+        serverName: currentServer?.serverName,
+        category: category,
+        languageCode: selectedLangCode || undefined, // Save WatchAnimeWorld language preference
+      });
+    } catch (e) {
+      console.warn('Failed to save progress:', e);
+    }
+  }, [user, animeData, currentEpisode, animeId, decodedEpisodeId, updateWatchHistory, currentServer, category, selectedLangCode]);
+
   const handleEpisodeChange = (epId: string) => {
     setFailedServers(new Set());
     navigate(`/watch/${encodeURIComponent(epId)}`);
@@ -318,52 +385,31 @@ export default function WatchPage() {
           <div className="xl:col-span-9 space-y-4 md:space-y-6">
             {/* Video Player */}
             <div className="rounded-xl md:rounded-2xl overflow-hidden border border-border/30 bg-card/60">
-              <VideoPlayer
-                sources={sourcesData?.sources || []}
-                subtitles={normalizedSubtitles}
-                headers={sourcesData?.headers}
-                poster={animeData?.anime.info.poster}
-                onError={handleVideoError}
-                onServerSwitch={handleServerSwitch}
-                isLoading={loadingSources}
-                serverName={currentServer ? getFriendlyServerName(currentServer.serverName) : undefined}
-                malId={sourcesData?.malID}
-                episodeNumber={serversData?.episodeNo || currentEpisode?.number}
-                initialSeekSeconds={initialSeekSeconds}
-                viewCount={viewCount}
-                onProgressUpdate={useCallback((progressSeconds, durationSeconds, completed) => {
-                  if (!animeData || !currentEpisode) return;
-                  try {
-                    if (user) {
-                      // Use mutateAsync to avoid triggering re-renders during render
-                      updateWatchHistory.mutateAsync({
-                        animeId,
-                        animeName: animeData.anime.info.name,
-                        animePoster: animeData.anime.info.poster,
-                        episodeId: decodedEpisodeId,
-                        episodeNumber: currentEpisode.number,
-                        progressSeconds: progressSeconds,
-                        durationSeconds: durationSeconds,
-                        completed: !!completed,
-                      }).catch(e => console.warn('Failed to save progress to DB:', e));
-                    }
-                    // Always save to localStorage (for server preference and as backup)
-                    updateLocalContinueWatching({
-                      animeId,
-                      animeName: animeData.anime.info.name,
-                      animePoster: animeData.anime.info.poster,
-                      episodeId: decodedEpisodeId,
-                      episodeNumber: currentEpisode.number,
-                      progressSeconds: progressSeconds,
-                      durationSeconds: durationSeconds || 0,
-                      serverName: currentServer?.serverName,
-                      category: category,
-                    });
-                  } catch (e) {
-                    console.warn('Failed to save progress:', e);
-                  }
-                }, [user, animeData, currentEpisode, animeId, decodedEpisodeId, updateWatchHistory, currentServer, category])}
-              />
+              {/* Render EmbedPlayer for WatchAnimeWorld embed sources */}
+              {selectedEmbedSource ? (
+                <EmbedPlayer
+                  url={selectedEmbedSource.url}
+                  poster={animeData?.anime.info.poster}
+                  language={selectedEmbedSource.language}
+                  onError={handleVideoError}
+                />
+              ) : (
+                <VideoPlayer
+                  sources={sourcesData?.sources || []}
+                  subtitles={normalizedSubtitles}
+                  headers={sourcesData?.headers}
+                  poster={animeData?.anime.info.poster}
+                  onError={handleVideoError}
+                  onServerSwitch={handleServerSwitch}
+                  isLoading={loadingSources}
+                  serverName={currentServer ? getFriendlyServerName(currentServer.serverName) : undefined}
+                  malId={sourcesData?.malID}
+                  episodeNumber={serversData?.episodeNo || currentEpisode?.number}
+                  initialSeekSeconds={initialSeekSeconds}
+                  viewCount={viewCount}
+                  onProgressUpdate={handleProgressUpdate}
+                />
+              )}
             </div>
 
             {/* Episode Info & Navigation */}
@@ -444,6 +490,12 @@ export default function WatchPage() {
                   <div className="flex items-center gap-2 text-xs md:text-sm font-medium text-muted-foreground">
                     <Server className="w-4 h-4" />
                     Server
+                    {sourcesData?.hasWatchAnimeWorld && (
+                      <span className="ml-auto flex items-center gap-1 text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">
+                        <Globe className="w-3 h-3" />
+                        Multi-Language Available
+                      </span>
+                    )}
                   </div>
                   {loadingServers ? (
                     <div className="flex gap-2">
@@ -458,6 +510,7 @@ export default function WatchPage() {
                           key={server.serverId}
                           onClick={() => {
                             setSelectedServerIndex(idx);
+                            setSelectedLangCode(null); // Reset language selection
                             setFailedServers(new Set());
                           }}
                           className={`h-9 px-3 md:px-4 rounded-xl font-medium transition-all text-sm ${
@@ -472,6 +525,47 @@ export default function WatchPage() {
                           {failedServers.has(server.serverName) && " ✗"}
                         </button>
                       ))}
+                      
+                      {/* WatchAnimeWorld Language Sources */}
+                      {sourcesData?.sources
+                        .filter(s => s.language && s.langCode)
+                        .reduce((acc: Array<{lang: string, code: string, isDub: boolean, isEmbed: boolean}>, source) => {
+                          // Deduplicate by language code
+                          if (!acc.find(l => l.code === source.langCode)) {
+                            acc.push({
+                              lang: source.language!,
+                              code: source.langCode!,
+                              isDub: source.isDub || false,
+                              isEmbed: source.isEmbed || (!source.isM3U8 && source.needsHeadless) || false
+                            });
+                          }
+                          return acc;
+                        }, [])
+                        .map((lang) => (
+                          <button
+                            key={lang.code}
+                            onClick={() => {
+                              // Select first source with this language
+                              const sourceIdx = sourcesData.sources.findIndex(
+                                s => s.langCode === lang.code
+                              );
+                              if (sourceIdx !== -1) {
+                                setSelectedServerIndex(-2); // Special index for WatchAnimeWorld
+                                setSelectedLangCode(lang.code);
+                                setFailedServers(new Set());
+                              }
+                            }}
+                            className={`h-9 px-3 md:px-4 rounded-xl font-medium transition-all text-sm flex items-center gap-1 ${
+                              selectedServerIndex === -2 && selectedLangCode === lang.code
+                                ? "bg-foreground text-background shadow-lg"
+                                : "bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30"
+                            }`}
+                          >
+                            <Globe className="w-3 h-3" />
+                            {lang.lang}
+                            {lang.isDub && <span className="text-xs opacity-70">(Dub)</span>}
+                          </button>
+                        ))}
                     </div>
                   )}
                 </div>

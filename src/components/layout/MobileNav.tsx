@@ -1,4 +1,4 @@
-import { LayoutGrid, Search, Heart, Settings, User, LogIn } from "lucide-react";
+import { LayoutGrid, Search, Heart, Settings, User, LogIn, Trophy } from "lucide-react";
 import { NavIcon } from "@/components/ui/NavIcon";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 export function MobileNav() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, isBanned } = useAuth();
+  const { user, profile, isBanned } = useAuth();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -23,15 +23,15 @@ export function MobileNav() {
         onClick={() => navigate("/search")}
       />
       <NavIcon 
-        icon={Heart} 
-        active={isActive("/favorites")} 
-        onClick={() => navigate("/favorites")}
+        icon={Trophy} 
+        active={isActive("/tierlists")} 
+        onClick={() => navigate("/tierlists")}
       />
       {user && !isBanned ? (
         <NavIcon 
           icon={User} 
-          active={isActive("/profile")} 
-          onClick={() => navigate("/profile")}
+          active={location.pathname.startsWith('/@') || isActive("/profile")} 
+          onClick={() => navigate(profile?.username ? `/@${profile.username}` : '/profile')}
         />
       ) : (
         <NavIcon 

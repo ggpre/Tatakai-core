@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Background } from '@/components/layout/Background';
 import { Sidebar } from '@/components/layout/Sidebar';
@@ -6,12 +7,71 @@ import { GlassPanel } from '@/components/ui/GlassPanel';
 import { ThemeSelector } from '@/components/settings/ThemeSelector';
 import { VideoSettingsPanel } from '@/components/video/VideoSettingsPanel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUpdateProfilePrivacy } from '@/hooks/useProfileFeatures';
+import { getMALAuthUrl, getAniListAuthUrl, disconnectMAL, disconnectAniList } from '@/lib/externalIntegrations';
+import { toast } from 'sonner';
 import { 
-  ArrowLeft, Palette, Film, Monitor, Bell, Shield, Info
+  ArrowLeft, Palette, Film, Monitor, Info, Link2, Eye, EyeOff, Globe, CheckCircle, ExternalLink, Shield
 } from 'lucide-react';
 
 export default function SettingsPage() {
   const navigate = useNavigate();
+  const { user, profile, refreshProfile } = useAuth();
+  const updatePrivacy = useUpdateProfilePrivacy();
+  const [isPublic, setIsPublic] = useState(true);
+
+  useEffect(() => {
+    if (profile) {
+      setIsPublic(profile.is_public ?? true);
+    }
+  }, [profile]);
+
+  const handlePrivacyChange = async (value: boolean) => {
+    setIsPublic(value);
+    try {
+      await updatePrivacy.mutateAsync(value);
+      toast.success(value ? 'Profile is now public' : 'Profile is now private');
+    } catch (error) {
+      setIsPublic(!value);
+      toast.error('Failed to update privacy settings');
+    }
+  };
+
+  const handleMALConnect = () => {
+    window.location.href = getMALAuthUrl();
+  };
+
+  const handleAniListConnect = () => {
+    window.location.href = getAniListAuthUrl();
+  };
+
+  const handleMALDisconnect = async () => {
+    if (!user) return;
+    try {
+      await disconnectMAL(user.id);
+      await refreshProfile();
+      toast.success('MyAnimeList disconnected');
+    } catch {
+      toast.error('Failed to disconnect');
+    }
+  };
+
+  const handleAniListDisconnect = async () => {
+    if (!user) return;
+    try {
+      await disconnectAniList(user.id);
+      await refreshProfile();
+      toast.success('AniList disconnected');
+    } catch {
+      toast.error('Failed to disconnect');
+    }
+  };
+
+  const hasMAL = !!profile?.mal_access_token;
+  const hasAniList = !!profile?.anilist_access_token;
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
@@ -50,6 +110,14 @@ export default function SettingsPage() {
               <Monitor className="w-4 h-4" />
               Display
             </TabsTrigger>
+            <TabsTrigger value="privacy" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <Shield className="w-4 h-4" />
+              Privacy
+            </TabsTrigger>
+            <TabsTrigger value="integrations" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <Link2 className="w-4 h-4" />
+              Integrations
+            </TabsTrigger>
             <TabsTrigger value="about" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <Info className="w-4 h-4" />
               About
@@ -82,7 +150,7 @@ export default function SettingsPage() {
               <div className="space-y-6">
                 <div className="flex items-center justify-between p-4 rounded-xl bg-muted/30">
                   <div>
-                    <p className="font-medium">Reduce Motion</p>
+                    <p className="font-medium">Reduce Motion (Soon)</p>
                     <p className="text-sm text-muted-foreground">Minimize animations for better performance</p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
@@ -92,7 +160,7 @@ export default function SettingsPage() {
                 </div>
                 <div className="flex items-center justify-between p-4 rounded-xl bg-muted/30">
                   <div>
-                    <p className="font-medium">High Contrast Mode</p>
+                    <p className="font-medium">High Contrast Mode (Soon)</p>
                     <p className="text-sm text-muted-foreground">Increase visual contrast for accessibility</p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
@@ -101,6 +169,171 @@ export default function SettingsPage() {
                   </label>
                 </div>
               </div>
+            </GlassPanel>
+          </TabsContent>
+
+          {/* Privacy Tab */}
+          <TabsContent value="privacy">
+            <GlassPanel className="p-6">
+              <h2 className="font-display text-xl font-semibold mb-6 flex items-center gap-2">
+                <Shield className="w-5 h-5 text-primary" />
+                Privacy Settings
+              </h2>
+              {user ? (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-muted/30">
+                    <div className="flex items-center gap-4">
+                      {isPublic ? (
+                        <Globe className="w-6 h-6 text-green-500" />
+                      ) : (
+                        <EyeOff className="w-6 h-6 text-muted-foreground" />
+                      )}
+                      <div>
+                        <p className="font-medium">Public Profile</p>
+                        <p className="text-sm text-muted-foreground">
+                          {isPublic 
+                            ? 'Your profile, watchlist, and history are visible to everyone'
+                            : 'Only you can see your profile, watchlist, and history'}
+                        </p>
+                      </div>
+                    </div>
+                    <Switch 
+                      checked={isPublic} 
+                      onCheckedChange={handlePrivacyChange}
+                      disabled={updatePrivacy.isPending}
+                    />
+                  </div>
+                  <div className="p-4 rounded-xl bg-muted/20 border border-muted">
+                    <p className="text-sm text-muted-foreground">
+                      When your profile is public, other users can view your:
+                    </p>
+                    <ul className="mt-2 text-sm text-muted-foreground list-disc list-inside space-y-1">
+                      <li>Profile information and avatar</li>
+                      <li>Watchlist (favorited anime)</li>
+                      <li>Watch history and progress</li>
+                      <li>Tier lists you've created</li>
+                    </ul>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Shield className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">Sign in to manage your privacy settings</p>
+                  <Button onClick={() => navigate('/auth')} className="mt-4">
+                    Sign In
+                  </Button>
+                </div>
+              )}
+            </GlassPanel>
+          </TabsContent>
+
+          {/* Integrations Tab */}
+          <TabsContent value="integrations">
+            <GlassPanel className="p-6">
+              <h2 className="font-display text-xl font-semibold mb-6 flex items-center gap-2">
+                <Link2 className="w-5 h-5 text-primary" />
+                External Integrations
+              </h2>
+              {user ? (
+                <div className="space-y-6">
+                  {/* MyAnimeList */}
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-muted/30">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-lg bg-[#2E51A2] flex items-center justify-center text-white font-bold text-lg">
+                        MAL
+                      </div>
+                      <div>
+                        <p className="font-medium">MyAnimeList</p>
+                        <p className="text-sm text-muted-foreground">
+                          {hasMAL ? (
+                            <span className="flex items-center gap-1 text-green-500">
+                              <CheckCircle className="w-3 h-3" />
+                              Connected
+                            </span>
+                          ) : (
+                            'Sync your anime list and ratings'
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    {hasMAL ? (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={handleMALDisconnect}
+                      >
+                        Disconnect
+                      </Button>
+                    ) : (
+                      <Button 
+                        size="sm"
+                        onClick={handleMALConnect}
+                        className="gap-2"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        Connect
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* AniList */}
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-muted/30">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-lg bg-[#02A9FF] flex items-center justify-center">
+                        <svg viewBox="0 0 24 24" className="w-8 h-8 fill-white">
+                          <path d="M6.361 2.943 0 21.056h4.942l1.077-3.133H11.4l1.052 3.133H22.9c.71 0 1.1-.392 1.1-1.101V17.53c0-.71-.39-1.101-1.1-1.101h-6.483V4.045c0-.71-.392-1.102-1.101-1.102h-2.422c-.71 0-1.101.392-1.101 1.102v1.064l-.758-2.166zm2.324 5.948 1.688 5.018H7.144z"/>
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="font-medium">AniList</p>
+                        <p className="text-sm text-muted-foreground">
+                          {hasAniList ? (
+                            <span className="flex items-center gap-1 text-green-500">
+                              <CheckCircle className="w-3 h-3" />
+                              Connected
+                            </span>
+                          ) : (
+                            'Sync your anime list and activity'
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    {hasAniList ? (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={handleAniListDisconnect}
+                      >
+                        Disconnect
+                      </Button>
+                    ) : (
+                      <Button 
+                        size="sm"
+                        onClick={handleAniListConnect}
+                        className="gap-2"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        Connect
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-muted/20 border border-muted">
+                    <p className="text-sm text-muted-foreground">
+                      <strong>What syncs:</strong> Your watchlist, watch progress, and ratings will be 
+                      automatically synced with connected services. This happens in real-time as you watch.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Link2 className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">Sign in to connect external services</p>
+                  <Button onClick={() => navigate('/auth')} className="mt-4">
+                    Sign In
+                  </Button>
+                </div>
+              )}
             </GlassPanel>
           </TabsContent>
 

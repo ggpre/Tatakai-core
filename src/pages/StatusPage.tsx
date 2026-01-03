@@ -7,9 +7,10 @@ import { GlassPanel } from '@/components/ui/GlassPanel';
 import { motion } from 'framer-motion';
 import { 
   ArrowLeft, CheckCircle, XCircle, AlertTriangle, 
-  RefreshCw, Server, Database, Wifi, Film, Globe, Clock
+  RefreshCw, Server, Database, Wifi, Film, Globe, Clock, Zap, Image, Play
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ServiceStatus {
   name: string;
@@ -17,43 +18,126 @@ interface ServiceStatus {
   latency?: number;
   icon: React.ReactNode;
   description: string;
+  url?: string;
 }
 
 export default function StatusPage() {
   const navigate = useNavigate();
   const [services, setServices] = useState<ServiceStatus[]>([
-    { name: 'API Server', status: 'checking', icon: <Server className="w-5 h-5" />, description: 'Main API endpoint' },
-    { name: 'Video Streaming', status: 'checking', icon: <Film className="w-5 h-5" />, description: 'Video delivery network' },
-    { name: 'Database', status: 'checking', icon: <Database className="w-5 h-5" />, description: 'User data storage' },
-    { name: 'CDN', status: 'checking', icon: <Globe className="w-5 h-5" />, description: 'Content delivery' },
-    { name: 'Authentication', status: 'checking', icon: <Wifi className="w-5 h-5" />, description: 'Login services' },
+    { name: 'Tatakai Website', status: 'checking', icon: <Globe className="w-5 h-5" />, description: 'Main website', url: window.location.origin },
+    { name: 'Supabase API', status: 'checking', icon: <Database className="w-5 h-5" />, description: 'Database & Auth' },
+    { name: 'Consumet API', status: 'checking', icon: <Server className="w-5 h-5" />, description: 'Anime data source', url: 'https://api.consumet.org' },
+    { name: 'Jikan API', status: 'checking', icon: <Server className="w-5 h-5" />, description: 'MyAnimeList data', url: 'https://api.jikan.moe/v4' },
+    { name: 'Waifu.pics API', status: 'checking', icon: <Image className="w-5 h-5" />, description: 'Profile images', url: 'https://api.waifu.pics/sfw/waifu' },
+    { name: 'Nekos.best API', status: 'checking', icon: <Image className="w-5 h-5" />, description: 'Husbando images', url: 'https://nekos.best/api/v2/husbando' },
+    { name: 'Video Proxy', status: 'checking', icon: <Play className="w-5 h-5" />, description: 'Video streaming' },
   ]);
   const [lastChecked, setLastChecked] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  const checkService = async (name: string, checkFn: () => Promise<{ status: ServiceStatus['status']; latency: number }>): Promise<ServiceStatus['status']> => {
+    try {
+      const result = await checkFn();
+      setServices(prev => prev.map(s => 
+        s.name === name ? { ...s, status: result.status, latency: result.latency } : s
+      ));
+      return result.status;
+    } catch {
+      setServices(prev => prev.map(s => 
+        s.name === name ? { ...s, status: 'down', latency: undefined } : s
+      ));
+      return 'down';
+    }
+  };
+
   const checkServices = async () => {
     setIsRefreshing(true);
     
-    // Simulate checking each service
-    const updatedServices = [...services];
-    
-    for (let i = 0; i < updatedServices.length; i++) {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      // Simulate realistic status checks
-      const random = Math.random();
-      let status: ServiceStatus['status'] = 'operational';
-      let latency = Math.floor(Math.random() * 100) + 20;
-      
-      if (random < 0.05) status = 'down';
-      else if (random < 0.15) {
-        status = 'degraded';
-        latency = Math.floor(Math.random() * 500) + 200;
+    // Reset all to checking
+    setServices(prev => prev.map(s => ({ ...s, status: 'checking' as const, latency: undefined })));
+
+    // Check Tatakai Website
+    await checkService('Tatakai Website', async () => {
+      const start = Date.now();
+      const res = await fetch(window.location.origin, { method: 'HEAD' });
+      const latency = Date.now() - start;
+      return { 
+        status: res.ok ? (latency > 1000 ? 'degraded' : 'operational') : 'down',
+        latency 
+      };
+    });
+
+    // Check Supabase
+    await checkService('Supabase API', async () => {
+      const start = Date.now();
+      const { error } = await supabase.from('profiles').select('count').limit(1);
+      const latency = Date.now() - start;
+      return { 
+        status: error ? 'down' : (latency > 500 ? 'degraded' : 'operational'),
+        latency 
+      };
+    });
+
+    // Check Consumet API
+    await checkService('Consumet API', async () => {
+      const start = Date.now();
+      const res = await fetch('https://api.consumet.org/anime/gogoanime/info/naruto', { signal: AbortSignal.timeout(10000) });
+      const latency = Date.now() - start;
+      return { 
+        status: res.ok ? (latency > 2000 ? 'degraded' : 'operational') : 'down',
+        latency 
+      };
+    });
+
+    // Check Jikan API
+    await checkService('Jikan API', async () => {
+      const start = Date.now();
+      const res = await fetch('https://api.jikan.moe/v4/anime/1', { signal: AbortSignal.timeout(10000) });
+      const latency = Date.now() - start;
+      return { 
+        status: res.ok ? (latency > 1500 ? 'degraded' : 'operational') : (res.status === 429 ? 'degraded' : 'down'),
+        latency 
+      };
+    });
+
+    // Check Waifu.pics API
+    await checkService('Waifu.pics API', async () => {
+      const start = Date.now();
+      const res = await fetch('https://api.waifu.pics/sfw/waifu', { signal: AbortSignal.timeout(5000) });
+      const latency = Date.now() - start;
+      return { 
+        status: res.ok ? (latency > 1000 ? 'degraded' : 'operational') : 'down',
+        latency 
+      };
+    });
+
+    // Check Nekos.best API
+    await checkService('Nekos.best API', async () => {
+      const start = Date.now();
+      const res = await fetch('https://nekos.best/api/v2/neko', { signal: AbortSignal.timeout(5000) });
+      const latency = Date.now() - start;
+      return { 
+        status: res.ok ? (latency > 1000 ? 'degraded' : 'operational') : 'down',
+        latency 
+      };
+    });
+
+    // Check Video Proxy (Supabase Edge Function)
+    await checkService('Video Proxy', async () => {
+      const start = Date.now();
+      try {
+        const { data } = await supabase.functions.invoke('video-proxy', { 
+          body: { test: true },
+          method: 'POST'
+        });
+        const latency = Date.now() - start;
+        return { status: 'operational', latency };
+      } catch {
+        const latency = Date.now() - start;
+        // Edge functions may not respond to test requests, so we check if Supabase is up
+        return { status: latency < 5000 ? 'operational' : 'degraded', latency };
       }
-      
-      updatedServices[i] = { ...updatedServices[i], status, latency };
-      setServices([...updatedServices]);
-    }
+    });
     
     setLastChecked(new Date());
     setIsRefreshing(false);

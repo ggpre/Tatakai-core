@@ -1,127 +1,179 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { GlassPanel } from '@/components/ui/GlassPanel';
 import { motion } from 'framer-motion';
 import { 
-  TrendingUp, TrendingDown, Users, Eye, Play, Clock, 
-  BarChart3, PieChart, Activity, Calendar, ArrowUpRight, ArrowDownRight
+  TrendingUp, Users, Eye, Play, Clock, Globe, MapPin,
+  BarChart3, PieChart, Activity, ArrowUpRight
 } from 'lucide-react';
 import { 
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   AreaChart, Area, BarChart, Bar, PieChart as RePieChart, Pie, Cell
 } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 
-interface DailyStats {
-  date: string;
-  users: number;
-  comments: number;
-  ratings: number;
-}
-
 export function AnalyticsDashboard() {
   const [timeRange, setTimeRange] = useState<'day' | 'week' | 'month'>('week');
+  const days = timeRange === 'day' ? 1 : timeRange === 'week' ? 7 : 30;
 
-  // Fetch total users count
+  // Total users
   const { data: totalUsers } = useQuery({
     queryKey: ['analytics_total_users'],
     queryFn: async () => {
-      const { count, error } = await supabase
+      const { count } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true });
-      if (error) throw error;
       return count || 0;
     },
   });
 
-  // Fetch total comments count
-  const { data: totalComments } = useQuery({
-    queryKey: ['analytics_total_comments'],
+  // Total visitors (unique sessions)
+  const { data: totalVisitors } = useQuery({
+    queryKey: ['analytics_total_visitors', timeRange],
     queryFn: async () => {
-      const { count, error } = await supabase
-        .from('comments')
-        .select('*', { count: 'exact', head: true });
-      if (error) throw error;
-      return count || 0;
-    },
-  });
-
-  // Fetch total ratings count
-  const { data: totalRatings } = useQuery({
-    queryKey: ['analytics_total_ratings'],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from('ratings')
-        .select('*', { count: 'exact', head: true });
-      if (error) throw error;
-      return count || 0;
-    },
-  });
-
-  // Fetch total watchlist items
-  const { data: totalWatchlist } = useQuery({
-    queryKey: ['analytics_total_watchlist'],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from('watchlist')
-        .select('*', { count: 'exact', head: true });
-      if (error) throw error;
-      return count || 0;
-    },
-  });
-
-  // Fetch new users in time range
-  const { data: newUsersInRange } = useQuery({
-    queryKey: ['analytics_new_users', timeRange],
-    queryFn: async () => {
-      const days = timeRange === 'day' ? 1 : timeRange === 'week' ? 7 : 30;
       const startDate = subDays(new Date(), days).toISOString();
-      
-      const { count, error } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
+      const { data } = await supabase
+        .from('page_visits')
+        .select('session_id')
         .gte('created_at', startDate);
-      if (error) throw error;
-      return count || 0;
+      
+      const uniqueSessions = new Set(data?.map(v => v.session_id) || []);
+      return uniqueSessions.size;
     },
   });
 
-  // Fetch daily stats for chart
+  // Guest vs logged in visitors
+  const { data: visitorBreakdown } = useQuery({
+    queryKey: ['analytics_visitor_breakdown', timeRange],
+    queryFn: async () => {
+      const startDate = subDays(new Date(), days).toISOString();
+      const { data } = await supabase
+        .from('page_visits')
+        .select('user_id, session_id')
+        .gte('created_at', startDate);
+      
+      const sessions = new Map<string, boolean>();
+      data?.forEach(v => {
+        if (!sessions.has(v.session_id)) {
+          sessions.set(v.session_id, !!v.user_id);
+        }
+      });
+      
+      let guests = 0, loggedIn = 0;
+      sessions.forEach(isLoggedIn => isLoggedIn ? loggedIn++ : guests++);
+      
+      return { guests, loggedIn };
+    },
+  });
+
+  // Total watch time
+  const { data: totalWatchTime } = useQuery({
+    queryKey: ['analytics_total_watch_time', timeRange],
+    queryFn: async () => {
+      const startDate = subDays(new Date(), days).toISOString();
+      const { data } = await supabase
+        .from('watch_sessions')
+        .select('watch_duration_seconds')
+        .gte('created_at', startDate);
+      
+      const totalSeconds = data?.reduce((acc, s) => acc + (s.watch_duration_seconds || 0), 0) || 0;
+      return totalSeconds;
+    },
+  });
+
+  // Top countries
+  const { data: topCountries } = useQuery({
+    queryKey: ['analytics_top_countries', timeRange],
+    queryFn: async () => {
+      const startDate = subDays(new Date(), days).toISOString();
+      const { data } = await supabase
+        .from('page_visits')
+        .select('country, session_id')
+        .gte('created_at', startDate)
+        .not('country', 'is', null);
+      
+      const countryCount = new Map<string, Set<string>>();
+      data?.forEach(v => {
+        if (v.country) {
+          if (!countryCount.has(v.country)) {
+            countryCount.set(v.country, new Set());
+          }
+          countryCount.get(v.country)!.add(v.session_id);
+        }
+      });
+      
+      return Array.from(countryCount.entries())
+        .map(([name, sessions]) => ({ name, value: sessions.size }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5);
+    },
+  });
+
+  // Top genres watched
+  const { data: topGenres } = useQuery({
+    queryKey: ['analytics_top_genres', timeRange],
+    queryFn: async () => {
+      const startDate = subDays(new Date(), days).toISOString();
+      const { data } = await supabase
+        .from('watch_sessions')
+        .select('genres, watch_duration_seconds')
+        .gte('created_at', startDate);
+      
+      const genreTime = new Map<string, number>();
+      data?.forEach(s => {
+        if (s.genres && Array.isArray(s.genres)) {
+          s.genres.forEach((genre: string) => {
+            genreTime.set(genre, (genreTime.get(genre) || 0) + (s.watch_duration_seconds || 0));
+          });
+        }
+      });
+      
+      const colors = ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899'];
+      return Array.from(genreTime.entries())
+        .map(([name, value], i) => ({ name, value: Math.round(value / 60), color: colors[i % colors.length] }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 6);
+    },
+  });
+
+  // Daily visitor stats
   const { data: dailyStats } = useQuery({
     queryKey: ['analytics_daily_stats', timeRange],
     queryFn: async () => {
-      const days = timeRange === 'day' ? 1 : timeRange === 'week' ? 7 : 30;
-      const stats: DailyStats[] = [];
+      const stats = [];
       
       for (let i = days - 1; i >= 0; i--) {
         const date = subDays(new Date(), i);
         const dayStart = startOfDay(date).toISOString();
         const dayEnd = endOfDay(date).toISOString();
         
-        const [usersResult, commentsResult, ratingsResult] = await Promise.all([
+        const [visitsResult, watchResult, usersResult] = await Promise.all([
+          supabase
+            .from('page_visits')
+            .select('session_id, user_id')
+            .gte('created_at', dayStart)
+            .lte('created_at', dayEnd),
+          supabase
+            .from('watch_sessions')
+            .select('watch_duration_seconds')
+            .gte('created_at', dayStart)
+            .lte('created_at', dayEnd),
           supabase
             .from('profiles')
             .select('*', { count: 'exact', head: true })
             .gte('created_at', dayStart)
             .lte('created_at', dayEnd),
-          supabase
-            .from('comments')
-            .select('*', { count: 'exact', head: true })
-            .gte('created_at', dayStart)
-            .lte('created_at', dayEnd),
-          supabase
-            .from('ratings')
-            .select('*', { count: 'exact', head: true })
-            .gte('created_at', dayStart)
-            .lte('created_at', dayEnd),
         ]);
+
+        const uniqueSessions = new Set(visitsResult.data?.map(v => v.session_id) || []);
+        const watchMinutes = (watchResult.data?.reduce((acc, s) => acc + (s.watch_duration_seconds || 0), 0) || 0) / 60;
 
         stats.push({
           date: format(date, timeRange === 'day' ? 'HH:mm' : 'MMM dd'),
-          users: usersResult.count || 0,
-          comments: commentsResult.count || 0,
-          ratings: ratingsResult.count || 0,
+          visitors: uniqueSessions.size,
+          watchTime: Math.round(watchMinutes),
+          newUsers: usersResult.count || 0,
         });
       }
       
@@ -129,133 +181,70 @@ export function AnalyticsDashboard() {
     },
   });
 
-  // Fetch top rated anime
-  const { data: topAnime } = useQuery({
-    queryKey: ['analytics_top_anime'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('ratings')
-        .select('anime_id, rating')
-        .order('created_at', { ascending: false })
-        .limit(100);
-      
-      if (error) throw error;
-      
-      // Aggregate by anime_id
-      const animeStats = new Map<string, { totalRating: number; count: number }>();
-      data?.forEach(r => {
-        const existing = animeStats.get(r.anime_id) || { totalRating: 0, count: 0 };
-        animeStats.set(r.anime_id, {
-          totalRating: existing.totalRating + r.rating,
-          count: existing.count + 1,
-        });
-      });
-      
-      return Array.from(animeStats.entries())
-        .map(([anime_id, stats]) => ({
-          name: anime_id.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-          avgRating: (stats.totalRating / stats.count).toFixed(1),
-          totalRatings: stats.count,
-        }))
-        .sort((a, b) => parseFloat(b.avgRating) - parseFloat(a.avgRating))
-        .slice(0, 5);
-    },
-  });
-
-  // Fetch watchlist status distribution
-  const { data: watchlistStats } = useQuery({
-    queryKey: ['analytics_watchlist_stats'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('watchlist')
-        .select('status');
-      
-      if (error) throw error;
-      
-      const statusCount = new Map<string, number>();
-      data?.forEach(w => {
-        const status = w.status || 'plan_to_watch';
-        statusCount.set(status, (statusCount.get(status) || 0) + 1);
-      });
-      
-      const colors = {
-        'plan_to_watch': 'hsl(var(--primary))',
-        'watching': 'hsl(var(--secondary))',
-        'completed': 'hsl(var(--accent))',
-        'dropped': 'hsl(var(--destructive))',
-      };
-      
-      return Array.from(statusCount.entries()).map(([name, value]) => ({
-        name: name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-        value,
-        color: colors[name as keyof typeof colors] || 'hsl(var(--muted-foreground))',
-      }));
-    },
-  });
-
-  // Fetch recent activity (comments per hour today)
+  // Hourly activity
   const { data: hourlyActivity } = useQuery({
-    queryKey: ['analytics_hourly_activity'],
+    queryKey: ['analytics_hourly'],
     queryFn: async () => {
       const today = startOfDay(new Date()).toISOString();
-      const { data, error } = await supabase
-        .from('comments')
+      const { data } = await supabase
+        .from('page_visits')
         .select('created_at')
         .gte('created_at', today);
       
-      if (error) throw error;
-      
       const hourCounts = new Array(24).fill(0);
-      data?.forEach(c => {
-        const hour = new Date(c.created_at).getHours();
+      data?.forEach(v => {
+        const hour = new Date(v.created_at).getHours();
         hourCounts[hour]++;
       });
       
-      return hourCounts.map((activity, i) => ({
+      return hourCounts.map((count, i) => ({
         hour: `${i.toString().padStart(2, '0')}:00`,
-        activity,
+        visits: count,
       }));
     },
   });
+
+  const formatWatchTime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes}m`;
+  };
 
   const statCards = [
     {
       title: 'Total Users',
       value: totalUsers?.toLocaleString() || '0',
-      change: newUsersInRange ? `+${newUsersInRange} new` : '+0 new',
-      isPositive: true,
+      subtitle: 'Registered accounts',
       icon: <Users className="w-5 h-5" />,
       color: 'from-blue-500 to-blue-700',
     },
     {
-      title: 'Total Comments',
-      value: totalComments?.toLocaleString() || '0',
-      change: 'All time',
-      isPositive: true,
-      icon: <Activity className="w-5 h-5" />,
+      title: 'Total Visitors',
+      value: totalVisitors?.toLocaleString() || '0',
+      subtitle: `${visitorBreakdown?.guests || 0} guests, ${visitorBreakdown?.loggedIn || 0} logged in`,
+      icon: <Eye className="w-5 h-5" />,
       color: 'from-green-500 to-green-700',
     },
     {
-      title: 'Total Ratings',
-      value: totalRatings?.toLocaleString() || '0',
-      change: 'All time',
-      isPositive: true,
-      icon: <Eye className="w-5 h-5" />,
+      title: 'Watch Time',
+      value: formatWatchTime(totalWatchTime || 0),
+      subtitle: `Last ${days} days`,
+      icon: <Clock className="w-5 h-5" />,
       color: 'from-purple-500 to-purple-700',
     },
     {
-      title: 'Watchlist Items',
-      value: totalWatchlist?.toLocaleString() || '0',
-      change: 'All time',
-      isPositive: true,
-      icon: <Clock className="w-5 h-5" />,
+      title: 'Top Country',
+      value: topCountries?.[0]?.name || 'N/A',
+      subtitle: `${topCountries?.[0]?.value || 0} visitors`,
+      icon: <Globe className="w-5 h-5" />,
       color: 'from-orange-500 to-orange-700',
     },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Time Range Selector */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="font-display text-xl font-semibold flex items-center gap-2">
           <BarChart3 className="w-5 h-5 text-primary" />
@@ -292,16 +281,12 @@ export function AnalyticsDashboard() {
                 <div className="p-2 rounded-xl bg-white/20">
                   {stat.icon}
                 </div>
-                <div className={`flex items-center gap-1 text-xs font-medium ${
-                  stat.isPositive ? 'text-green-200' : 'text-red-200'
-                }`}>
-                  {stat.isPositive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                  {stat.change}
-                </div>
+                <ArrowUpRight className="w-4 h-4 text-white/70" />
               </div>
               <div className="mt-4">
                 <p className="text-2xl font-bold text-white">{stat.value}</p>
                 <p className="text-sm text-white/70">{stat.title}</p>
+                <p className="text-xs text-white/50 mt-1">{stat.subtitle}</p>
               </div>
             </GlassPanel>
           </motion.div>
@@ -310,23 +295,19 @@ export function AnalyticsDashboard() {
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Activity Chart */}
+        {/* Visitor Trends */}
         <GlassPanel className="p-6">
           <h3 className="font-medium mb-4 flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-primary" />
-            Daily Activity
+            Visitor Trends
           </h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={dailyStats || []}>
                 <defs>
-                  <linearGradient id="usersGradient" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id="visitorsGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
                     <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="commentsGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--secondary))" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="hsl(var(--secondary))" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -337,155 +318,166 @@ export function AnalyticsDashboard() {
                     backgroundColor: 'hsl(var(--card))',
                     border: '1px solid hsl(var(--border))',
                     borderRadius: '8px',
-                    color: 'hsl(var(--foreground))',
                   }}
                 />
                 <Area
                   type="monotone"
-                  dataKey="users"
+                  dataKey="visitors"
                   stroke="hsl(var(--primary))"
-                  fill="url(#usersGradient)"
+                  fill="url(#visitorsGrad)"
                   strokeWidth={2}
-                  name="New Users"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="comments"
-                  stroke="hsl(var(--secondary))"
-                  fill="url(#commentsGradient)"
-                  strokeWidth={2}
-                  name="Comments"
+                  name="Visitors"
                 />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </GlassPanel>
 
-        {/* Watchlist Stats */}
+        {/* Top Genres */}
         <GlassPanel className="p-6">
           <h3 className="font-medium mb-4 flex items-center gap-2">
             <PieChart className="w-4 h-4 text-primary" />
-            Watchlist Distribution
+            Most Watched Genres
           </h3>
           <div className="h-64 flex items-center">
-            {watchlistStats && watchlistStats.length > 0 ? (
+            {topGenres && topGenres.length > 0 ? (
               <>
-                <ResponsiveContainer width="60%" height="100%">
+                <ResponsiveContainer width="50%" height="100%">
                   <RePieChart>
                     <Pie
-                      data={watchlistStats}
+                      data={topGenres}
                       cx="50%"
                       cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={5}
+                      innerRadius={50}
+                      outerRadius={90}
+                      paddingAngle={3}
                       dataKey="value"
                     >
-                      {watchlistStats.map((entry, index) => (
+                      {topGenres.map((entry, index) => (
                         <Cell key={index} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'hsl(var(--card))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px',
-                        color: 'hsl(var(--foreground))',
-                      }}
-                    />
+                    <Tooltip />
                   </RePieChart>
                 </ResponsiveContainer>
                 <div className="space-y-2 flex-1">
-                  {watchlistStats.map((item) => (
+                  {topGenres.map((item) => (
                     <div key={item.name} className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                      <span className="text-sm">{item.name}</span>
-                      <span className="text-sm text-muted-foreground">{item.value}</span>
+                      <span className="text-sm flex-1">{item.name}</span>
+                      <span className="text-xs text-muted-foreground">{item.value}m</span>
                     </div>
                   ))}
                 </div>
               </>
             ) : (
-              <div className="w-full text-center text-muted-foreground">No watchlist data yet</div>
+              <div className="w-full text-center text-muted-foreground">No genre data yet</div>
             )}
           </div>
         </GlassPanel>
       </div>
 
-      {/* Top Anime */}
+      {/* Bottom Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Top Countries */}
+        <GlassPanel className="p-6">
+          <h3 className="font-medium mb-4 flex items-center gap-2">
+            <MapPin className="w-4 h-4 text-primary" />
+            Top Countries
+          </h3>
+          {topCountries && topCountries.length > 0 ? (
+            <div className="space-y-3">
+              {topCountries.map((country, index) => (
+                <div key={country.name} className="flex items-center gap-3">
+                  <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+                    {index + 1}
+                  </div>
+                  <span className="flex-1 font-medium">{country.name}</span>
+                  <div className="flex-1">
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${(country.value / (topCountries[0]?.value || 1)) * 100}%` }}
+                        className="h-full bg-primary rounded-full"
+                      />
+                    </div>
+                  </div>
+                  <span className="text-sm text-muted-foreground w-20 text-right">
+                    {country.value} visitors
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">No country data yet</div>
+          )}
+        </GlassPanel>
+
+        {/* Hourly Activity */}
+        <GlassPanel className="p-6">
+          <h3 className="font-medium mb-4 flex items-center gap-2">
+            <Activity className="w-4 h-4 text-primary" />
+            Today's Activity
+          </h3>
+          <div className="h-48">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={hourlyActivity || []}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="hour" stroke="hsl(var(--muted-foreground))" fontSize={10} interval={3} />
+                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={10} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px',
+                  }}
+                />
+                <Bar 
+                  dataKey="visits" 
+                  fill="hsl(var(--primary))" 
+                  radius={[4, 4, 0, 0]}
+                  name="Page Visits"
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </GlassPanel>
+      </div>
+
+      {/* Watch Time Chart */}
       <GlassPanel className="p-6">
         <h3 className="font-medium mb-4 flex items-center gap-2">
           <Play className="w-4 h-4 text-primary" />
-          Top Rated Anime
-        </h3>
-        {topAnime && topAnime.length > 0 ? (
-          <div className="space-y-4">
-            {topAnime.map((anime, index) => (
-              <motion.div
-                key={anime.name}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="flex items-center gap-4"
-              >
-                <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center font-bold text-primary">
-                  {index + 1}
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium truncate">{anime.name}</p>
-                  <div className="w-full h-2 bg-muted rounded-full mt-1 overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${(parseFloat(anime.avgRating) / 10) * 100}%` }}
-                      transition={{ duration: 0.5, delay: index * 0.1 }}
-                      className="h-full bg-gradient-to-r from-primary to-secondary rounded-full"
-                    />
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-medium">{anime.avgRating}/10</p>
-                  <p className="text-xs text-muted-foreground">{anime.totalRatings} ratings</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 text-muted-foreground">No ratings data yet</div>
-        )}
-      </GlassPanel>
-
-      {/* Hourly Activity */}
-      <GlassPanel className="p-6">
-        <h3 className="font-medium mb-4 flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-primary" />
-          Today's Hourly Activity
+          Daily Watch Time (minutes)
         </h3>
         <div className="h-48">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={hourlyActivity || []}>
+            <AreaChart data={dailyStats || []}>
+              <defs>
+                <linearGradient id="watchTimeGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                </linearGradient>
+              </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis 
-                dataKey="hour" 
-                stroke="hsl(var(--muted-foreground))" 
-                fontSize={10}
-                interval={2}
-              />
-              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={10} />
+              <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
               <Tooltip
                 contentStyle={{
                   backgroundColor: 'hsl(var(--card))',
                   border: '1px solid hsl(var(--border))',
                   borderRadius: '8px',
-                  color: 'hsl(var(--foreground))',
                 }}
               />
-              <Bar 
-                dataKey="activity" 
-                fill="hsl(var(--primary))" 
-                radius={[4, 4, 0, 0]}
-                name="Comments"
+              <Area
+                type="monotone"
+                dataKey="watchTime"
+                stroke="#8b5cf6"
+                fill="url(#watchTimeGrad)"
+                strokeWidth={2}
+                name="Watch Time (min)"
               />
-            </BarChart>
+            </AreaChart>
           </ResponsiveContainer>
         </div>
       </GlassPanel>

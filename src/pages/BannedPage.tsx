@@ -3,35 +3,13 @@ import { Ban, ShieldX, Mail, AlertTriangle, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
+import { StatusVideoBackground } from "@/components/layout/StatusVideoBackground";
 
 const BannedPage = () => {
   const { banReason, signOut, user, profile } = useAuth();
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4 overflow-hidden relative">
-      {/* Warning stripes background */}
-      <div className="absolute inset-0 overflow-hidden opacity-5">
-        <div 
-          className="absolute inset-0"
-          style={{
-            background: `repeating-linear-gradient(
-              45deg,
-              transparent,
-              transparent 35px,
-              hsl(var(--destructive)) 35px,
-              hsl(var(--destructive)) 70px
-            )`
-          }}
-        />
-      </div>
-
-      {/* Red glow */}
-      <div className="absolute inset-0 overflow-hidden">
-        <motion.div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-red-500/10 rounded-full blur-3xl"
-          animate={{ scale: [1, 1.1, 1] }}
-          transition={{ duration: 3, repeat: Infinity }}
-        />
-      </div>
+    <div className="min-h-screen flex items-center justify-center p-4 overflow-hidden relative">
+      <StatusVideoBackground overlayColor="from-destructive/20 via-background/90 to-background" />
 
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
@@ -39,7 +17,7 @@ const BannedPage = () => {
         transition={{ duration: 0.5 }}
         className="relative z-10 w-full max-w-md"
       >
-        <Card className="border-destructive/50 bg-card/80 backdrop-blur">
+        <Card className="border-destructive/50 bg-black/40 backdrop-blur-xl shadow-2xl">
           <CardContent className="pt-8 pb-8 text-center">
             {/* Ban icon with animation */}
             <motion.div

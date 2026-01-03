@@ -266,6 +266,12 @@ export interface StreamingSource {
   url: string;
   isM3U8: boolean;
   quality?: string;
+  language?: string;
+  langCode?: string;
+  isDub?: boolean;
+  providerName?: string;
+  needsHeadless?: boolean;
+  isEmbed?: boolean;
 }
 
 export interface Subtitle {
@@ -353,4 +359,36 @@ export async function fetchGenreAnimes(
   hasNextPage: boolean;
 }> {
   return apiGet(`/genre/${genre}?page=${page}`);
+}
+
+// Fetch sources from WatchAnimeWorld
+export async function fetchWatchanimeworldSources(
+  episodeUrl: string
+): Promise<StreamingData> {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  if (!supabaseUrl) {
+    throw new Error('Supabase URL not configured');
+  }
+
+  const apikey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  const params = new URLSearchParams({ episodeUrl });
+  if (apikey) params.set('apikey', apikey);
+
+  const url = `${supabaseUrl}/functions/v1/watchanimeworld-scraper?${params.toString()}`;
+  
+  const headers: Record<string, string> = {
+    'Accept': 'application/json',
+  };
+  if (apikey) {
+    headers['apikey'] = apikey;
+    headers['Authorization'] = `Bearer ${apikey}`;
+  }
+
+  const response = await fetch(url, { headers });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch WatchAnimeWorld sources: ${response.status}`);
+  }
+  
+  return response.json();
 }

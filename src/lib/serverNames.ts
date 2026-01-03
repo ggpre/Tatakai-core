@@ -3,6 +3,7 @@ export const SERVER_NAMES: Record<string, string> = {
   'hd-1': 'Ultra HD',
   'hd-2': 'HD Pro',
   'megacloud': 'MegaCloud',
+  'multicloud': 'MultiCloud',
   'vidstreaming': 'VidStream',
   'streamsb': 'StreamSB',
   'streamtape': 'StreamTape',
@@ -12,6 +13,8 @@ export const SERVER_NAMES: Record<string, string> = {
   'upstream': 'UpStream',
   'mp4upload': 'MP4Upload',
   'filemoon': 'FileMoon',
+  'watchaw': 'WatchAW',
+  'watchanimeworld': 'WatchAnimeWorld',
 };
 
 export function getFriendlyServerName(serverName: string): string {

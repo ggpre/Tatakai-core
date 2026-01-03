@@ -10,10 +10,18 @@ interface Profile {
   username: string | null;
   display_name: string | null;
   avatar_url: string | null;
+  banner_url?: string | null;
   bio: string | null;
   is_banned?: boolean;
   ban_reason?: string | null;
   is_admin?: boolean;
+  is_public?: boolean;
+  mal_access_token?: string | null;
+  mal_refresh_token?: string | null;
+  mal_username?: string | null;
+  anilist_access_token?: string | null;
+  anilist_username?: string | null;
+  showcase_anime?: any | null;
 }
 
 interface AuthContextType {
@@ -65,11 +73,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setIsBanned(false);
         setBanReason(null);
-      }
-      // Check if user is admin from profile
-      if (profileData.is_admin) {
-        setIsAdmin(true);
-        setIsModerator(true);
       }
     } else {
       setProfile(null);

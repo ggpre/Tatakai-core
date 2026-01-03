@@ -523,3 +523,69 @@ const response = await fetch(proxyUrl, {
   })
 });
 ```
+
+## WatchAnimeWorld Integration
+
+### Fetch Sources
+
+**Endpoint**: `GET /functions/v1/watchanimeworld-scraper`
+
+**Parameters**:
+- `episodeUrl` (required): Full URL or slug (e.g., `naruto-shippuden-1x1`)
+
+**Example Request**:
+```typescript
+import { fetchWatchanimeworldSources } from '@/lib/api';
+
+const sources = await fetchWatchanimeworldSources('naruto-shippuden-1x1');
+```
+
+**Response**:
+```typescript
+{
+  headers: {
+    Referer: "https://watchanimeworld.in/episode/naruto-shippuden-1x1/",
+    "User-Agent": "Mozilla/5.0 ..."
+  },
+  sources: [
+    {
+      url: "https://example.com/video.m3u8",
+      isM3U8: true,
+      quality: "HD",
+      language: "Hindi",
+      langCode: "hi",
+      isDub: true,
+      providerName: "abysscdn",
+      needsHeadless: false
+    }
+  ],
+  subtitles: [],
+  anilistID: null,
+  malID: null
+}
+```
+
+**Extended Source Fields**:
+- `language`: Display name (Hindi, Tamil, etc.)
+- `langCode`: ISO 639-1 code (hi, ta, etc.)
+- `isDub`: Boolean indicating dubbed audio
+- `providerName`: Source provider identifier
+- `needsHeadless`: Requires JS/headless to resolve
+
+**React Hook**:
+```typescript
+import { useWatchanimeworldSources } from '@/hooks/useWatchanimeworldSources';
+
+const { data, isLoading, error } = useWatchanimeworldSources('naruto-1x1');
+```
+
+**Rate Limiting**:
+- Default: 30 requests/minute per IP
+- Returns 429 when exceeded
+- Configure via `WATCHAW_RATE_LIMIT` env var
+
+**Caching**:
+- 10-minute TTL (default)
+- Configure via `WATCHAW_CACHE_TTL` env var
+
+See [WatchAnimeWorld Integration Guide](./watchanimeworld-integration.md) for detailed documentation.

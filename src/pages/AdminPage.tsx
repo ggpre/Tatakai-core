@@ -13,10 +13,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { AnalyticsDashboard } from '@/components/admin/AnalyticsDashboard';
+import { VideoServerManager } from '@/components/admin/VideoServerManager';
 import { 
   ArrowLeft, Shield, ShieldCheck, ShieldOff, Users, MessageSquare, Star, Search,
   Trash2, Ban, CheckCircle, AlertTriangle, BarChart3, Send,
-  Settings, Power, Unlock, BellRing
+  Settings, Power, Unlock, BellRing, Server
 } from 'lucide-react';
 
 export default function AdminPage() {
@@ -375,6 +376,10 @@ export default function AdminPage() {
               <Send className="w-4 h-4" />
               Messages
             </TabsTrigger>
+            <TabsTrigger value="servers" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <Server className="w-4 h-4" />
+              Video Servers
+            </TabsTrigger>
             <TabsTrigger value="settings" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <Settings className="w-4 h-4" />
               Settings
@@ -667,6 +672,13 @@ export default function AdminPage() {
                 )}
               </GlassPanel>
             </div>
+          </TabsContent>
+
+          {/* Video Servers Tab */}
+          <TabsContent value="servers">
+            <GlassPanel className="p-6">
+              <VideoServerManager />
+            </GlassPanel>
           </TabsContent>
 
           {/* Settings Tab */}

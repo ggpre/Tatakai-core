@@ -1,7 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Background } from '@/components/layout/Background';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { MobileNav } from '@/components/layout/MobileNav';
 import { GlassPanel } from '@/components/ui/GlassPanel';
@@ -13,122 +12,136 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import { useWatchHistory } from '@/hooks/useWatchHistory';
+import { usePublicProfile, usePublicWatchlist, usePublicWatchHistory } from '@/hooks/useProfileFeatures';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { getProxiedImageUrl } from '@/lib/api';
+import { AvatarPicker } from '@/components/profile/AvatarPicker';
+import { SocialLinksEditor, SocialLinksDisplay, SocialLinks } from '@/components/profile/SocialLinksEditor';
 import { 
   User, Settings, List, History, LogOut, Edit2, Save, X, 
-  Play, Trash2, Clock, CheckCircle, Eye, Pause, XCircle, ArrowLeft, Camera, Loader2
+  Play, Trash2, Clock, CheckCircle, Eye, Pause, XCircle, ArrowLeft, Camera, Shield, Sparkles, Globe, Lock, Share2
 } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { StatusVideoBackground } from '@/components/layout/StatusVideoBackground';
 
-const STATUS_LABELS: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-  watching: { label: 'Watching', icon: <Play className="w-4 h-4" />, color: 'text-primary' },
-  completed: { label: 'Completed', icon: <CheckCircle className="w-4 h-4" />, color: 'text-green-500' },
-  plan_to_watch: { label: 'Plan to Watch', icon: <Eye className="w-4 h-4" />, color: 'text-amber' },
-  on_hold: { label: 'On Hold', icon: <Pause className="w-4 h-4" />, color: 'text-orange' },
-  dropped: { label: 'Dropped', icon: <XCircle className="w-4 h-4" />, color: 'text-destructive' },
+const STATUS_LABELS: Record<string, { label: string; icon: React.ReactNode; color: string; bg: string }> = {
+  watching: { label: 'Watching', icon: <Play className="w-3 h-3" />, color: 'text-blue-400', bg: 'bg-blue-400/10' },
+  completed: { label: 'Completed', icon: <CheckCircle className="w-3 h-3" />, color: 'text-green-400', bg: 'bg-green-400/10' },
+  plan_to_watch: { label: 'Plan to Watch', icon: <Eye className="w-3 h-3" />, color: 'text-amber-400', bg: 'bg-amber-400/10' },
+  on_hold: { label: 'On Hold', icon: <Pause className="w-3 h-3" />, color: 'text-orange-400', bg: 'bg-orange-400/10' },
+  dropped: { label: 'Dropped', icon: <XCircle className="w-3 h-3" />, color: 'text-red-400', bg: 'bg-red-400/10' },
 };
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const { user, profile, signOut, refreshProfile, isAdmin } = useAuth();
-  const { data: watchlist, isLoading: loadingWatchlist } = useWatchlist();
-  const { data: history, isLoading: loadingHistory } = useWatchHistory();
+  const { username: usernameParam, atUsername } = useParams<{ username?: string; atUsername?: string }>();
+  const { user, profile: ownProfile, signOut, refreshProfile, isAdmin } = useAuth();
+  
+  // Determine if viewing someone else's profile
+  const viewingUsername = usernameParam || (atUsername?.startsWith('@') ? atUsername.slice(1) : atUsername);
+  const isViewingOther = !!viewingUsername && viewingUsername !== ownProfile?.username;
+  
+  // Fetch public profile if viewing other user
+  const { data: publicProfile, isLoading: loadingPublicProfile, error: publicProfileError } = usePublicProfile(viewingUsername || '');
+  
+  // Use the appropriate profile data
+  const profile = isViewingOther ? publicProfile : ownProfile;
+  
+  // Fetch watchlist and history - own data or public data
+  const { data: ownWatchlist, isLoading: loadingOwnWatchlist } = useWatchlist();
+  const { data: ownHistory, isLoading: loadingOwnHistory } = useWatchHistory();
+  const { data: publicWatchlist = [], isLoading: loadingPublicWatchlist } = usePublicWatchlist(
+    publicProfile?.user_id, 
+    publicProfile?.is_public ?? false,
+    publicProfile?.show_watchlist ?? true
+  );
+  const { data: publicHistory = [], isLoading: loadingPublicHistory } = usePublicWatchHistory(
+    publicProfile?.user_id, 
+    publicProfile?.is_public ?? false,
+    publicProfile?.show_history ?? true
+  );
+  
+  const watchlist = isViewingOther ? publicWatchlist : ownWatchlist;
+  const history = isViewingOther ? publicHistory : ownHistory;
+  const loadingWatchlist = isViewingOther ? loadingPublicWatchlist : loadingOwnWatchlist;
+  const loadingHistory = isViewingOther ? loadingPublicHistory : loadingOwnHistory;
+  
+  // Check if tabs should be visible for public profiles
+  const showWatchlistTab = !isViewingOther || (publicProfile?.is_public && publicProfile?.show_watchlist !== false);
+  const showHistoryTab = !isViewingOther || (publicProfile?.is_public && publicProfile?.show_history !== false);
   
   const [isEditing, setIsEditing] = useState(false);
   const [displayName, setDisplayName] = useState('');
   const [username, setUsername] = useState('');
   const [bio, setBio] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Sync state when profile loads or changes (even when not editing)
+  // Sync state when profile loads or changes
   useEffect(() => {
-    if (profile) {
-      setDisplayName(profile.display_name || '');
-      setUsername(profile.username || '');
-      setBio(profile.bio || '');
+    if (ownProfile && !isViewingOther) {
+      setDisplayName(ownProfile.display_name || '');
+      setUsername(ownProfile.username || '');
+      setBio(ownProfile.bio || '');
     }
-  }, [profile]);
+  }, [ownProfile, isViewingOther]);
 
-  if (!user) {
+  // If viewing other's profile that doesn't exist or is private
+  if (isViewingOther && !loadingPublicProfile && (publicProfileError || !publicProfile)) {
+    return (
+      <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
+        <StatusVideoBackground overlayColor="from-background/95 via-background/90 to-background/80" />
+        <Sidebar />
+        <main className="relative z-10 pl-0 md:pl-20 lg:pl-24 w-full">
+          <div className="max-w-7xl mx-auto px-4 md:px-8 py-20">
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-8"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              <span>Back</span>
+            </button>
+            <div className="text-center">
+              <Lock className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+              <h1 className="text-2xl font-bold mb-2">Profile Not Available</h1>
+              <p className="text-muted-foreground mb-6">
+                This profile is private or doesn't exist.
+              </p>
+              <Button onClick={() => navigate('/')}>Go Home</Button>
+            </div>
+          </div>
+        </main>
+        <MobileNav />
+      </div>
+    );
+  }
+
+  // Loading state for public profile
+  if (isViewingOther && loadingPublicProfile) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // Redirect to auth if not logged in and viewing own profile
+  if (!user && !isViewingOther) {
     navigate('/auth');
     return null;
   }
 
-  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file');
-      return;
-    }
-
-    // Validate file size (max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('Image must be less than 2MB');
-      return;
-    }
-
-    setIsUploadingAvatar(true);
-    try {
-      // Create a unique filename
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/avatar.${fileExt}`;
-
-      // Upload to Supabase Storage
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, file, { upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName);
-
-      // Add cache-busting query param
-      const avatarUrl = `${publicUrl}?t=${Date.now()}`;
-
-      // Update profile with new avatar URL
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ avatar_url: avatarUrl })
-        .eq('user_id', user.id);
-
-      if (updateError) throw updateError;
-
-      await refreshProfile();
-      toast.success('Avatar updated!');
-    } catch (error: any) {
-      console.error('Avatar upload error:', error);
-      toast.error('Failed to upload avatar');
-    } finally {
-      setIsUploadingAvatar(false);
-    }
-  };
-
   const handleSaveProfile = async () => {
     setIsSaving(true);
     try {
-      console.log('Saving profile:', { displayName, username, bio, userId: user.id });
-      
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('profiles')
         .update({
           display_name: displayName.trim() || null,
           username: username.trim() || null,
           bio: bio.trim() || null,
         })
-        .eq('user_id', user.id)
-        .select()
-        .single();
-      
-      console.log('Update result:', { data, error });
+        .eq('user_id', user.id);
       
       if (error) throw error;
       
@@ -136,7 +149,6 @@ export default function ProfilePage() {
       setIsEditing(false);
       toast.success('Profile updated successfully!');
     } catch (error: any) {
-      console.error('Profile update error:', error);
       if (error.message?.includes('unique') || error.code === '23505') {
         toast.error('Username is already taken');
       } else {
@@ -161,270 +173,441 @@ export default function ProfilePage() {
     });
   };
 
+  // Calculate stats
+  const stats = {
+    total: watchlist?.length || 0,
+    watching: watchlist?.filter(i => i.status === 'watching').length || 0,
+    completed: watchlist?.filter(i => i.status === 'completed').length || 0,
+    plan_to_watch: watchlist?.filter(i => i.status === 'plan_to_watch').length || 0,
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
-      <Background />
+      <StatusVideoBackground overlayColor="from-background/95 via-background/90 to-background/80" />
       <Sidebar />
 
-      <main className="relative z-10 pl-6 md:pl-32 pr-6 py-6 max-w-[1400px] mx-auto pb-24 md:pb-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span>Back</span>
-          </button>
+      <main className="relative z-10 pl-0 md:pl-20 lg:pl-24 w-full">
+        {/* Hero Banner */}
+        <div className="h-[300px] md:h-[400px] relative w-full overflow-hidden group">
+          {profile?.banner_url ? (
+            <img 
+              src={profile.banner_url} 
+              alt="Profile banner"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          ) : (
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-purple-500/20" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/20 to-background" />
           
-          {isAdmin && (
-            <Button
-              variant="outline"
-              onClick={() => navigate('/admin')}
-              className="border-primary/50 text-primary"
-            >
-              Admin Dashboard
-            </Button>
+          {/* Banner Picker Button - Only show for own profile */}
+          {!isViewingOther && (
+            <AvatarPicker 
+              type="banner"
+              currentImage={profile?.banner_url || undefined}
+              trigger={
+                <button className="absolute top-4 right-4 px-4 py-2 rounded-lg bg-black/50 hover:bg-black/70 text-white flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm">
+                  <Camera className="w-4 h-4" />
+                  Change Banner
+                </button>
+              }
+            />
           )}
         </div>
 
-        {/* Profile Header */}
-        <GlassPanel className="p-6 md:p-8 mb-8">
-          <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
-            {/* Avatar with upload */}
-            <div className="relative group">
-              <Avatar className="w-24 h-24 md:w-32 md:h-32">
-                <AvatarImage src={profile?.avatar_url || undefined} />
-                <AvatarFallback className="bg-gradient-to-br from-primary to-secondary text-primary-foreground text-4xl font-bold">
-                  {profile?.display_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U'}
-                </AvatarFallback>
-              </Avatar>
-              
-              {/* Upload overlay */}
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploadingAvatar}
-                className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-              >
-                {isUploadingAvatar ? (
-                  <Loader2 className="w-8 h-8 text-white animate-spin" />
-                ) : (
-                  <Camera className="w-8 h-8 text-white" />
+        <div className="max-w-7xl mx-auto px-4 md:px-8 -mt-32 relative pb-20">
+          {/* Back button when viewing other's profile */}
+          {isViewingOther && (
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              <span>Back</span>
+            </button>
+          )}
+
+          {/* Profile Header Card */}
+          <motion.div 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="flex flex-col md:flex-row gap-8 items-start"
+          >
+            {/* Avatar Column */}
+            <div className="flex flex-col items-center md:items-start gap-4">
+              <div className="relative group">
+                <div className="w-32 h-32 md:w-48 md:h-48 rounded-full p-1 bg-background ring-4 ring-background/50 overflow-hidden shadow-2xl">
+                  <Avatar className="w-full h-full">
+                    <AvatarImage src={profile?.avatar_url || undefined} className="object-cover" />
+                    <AvatarFallback className="bg-gradient-to-br from-primary to-purple-600 text-white text-5xl font-bold">
+                      {profile?.display_name?.[0]?.toUpperCase() || (isViewingOther ? 'U' : user?.email?.[0]?.toUpperCase()) || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+                
+                {/* Anime Avatar Picker - Only show for own profile */}
+                {!isViewingOther && (
+                  <AvatarPicker 
+                    type="avatar"
+                    currentImage={profile?.avatar_url || undefined}
+                    trigger={
+                      <button className="absolute -bottom-2 -right-2 w-10 h-10 rounded-full bg-primary hover:bg-primary/90 flex items-center justify-center shadow-lg transition-all duration-200 hover:scale-110">
+                        <Sparkles className="w-5 h-5 text-primary-foreground" />
+                      </button>
+                    }
+                  />
                 )}
-              </button>
-              
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleAvatarUpload}
-                className="hidden"
-              />
-            </div>
-            
-            {/* Info */}
-            <div className="flex-1">
-              {isEditing ? (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="displayName">Display Name</Label>
-                      <Input
-                        id="displayName"
-                        value={displayName}
-                        onChange={(e) => setDisplayName(e.target.value)}
-                        className="bg-muted/50"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="username">Username</Label>
-                      <Input
-                        id="username"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        placeholder="@username"
-                        className="bg-muted/50"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="bio">Bio</Label>
-                    <Textarea
-                      id="bio"
-                      value={bio}
-                      onChange={(e) => setBio(e.target.value)}
-                      placeholder="Tell us about yourself..."
-                      className="bg-muted/50 resize-none"
-                      rows={3}
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <Button onClick={handleSaveProfile} disabled={isSaving} className="gap-2">
-                      <Save className="w-4 h-4" />
-                      Save
-                    </Button>
-                    <Button variant="outline" onClick={() => setIsEditing(false)}>
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
+              </div>
+
+              {/* Quick Stats for Mobile */}
+              <div className="flex md:hidden gap-4 text-sm text-muted-foreground">
+                <div className="text-center">
+                  <div className="font-bold text-foreground text-lg">{stats.watching}</div>
+                  <div>Watching</div>
                 </div>
-              ) : (
-                <>
-                  <div className="flex items-center gap-3 mb-2">
-                    <h1 className="font-display text-2xl md:text-3xl font-bold">
-                      {profile?.display_name || 'User'}
-                    </h1>
-                    {profile?.username && (
-                      <span className="text-muted-foreground">@{profile.username}</span>
-                    )}
-                  </div>
-                  <p className="text-muted-foreground mb-4">{user.email}</p>
-                  {profile?.bio && (
-                    <p className="text-foreground/80 mb-4">{profile.bio}</p>
-                  )}
-                  <div className="flex gap-3">
-                    <Button variant="outline" onClick={() => setIsEditing(true)} className="gap-2">
-                      <Edit2 className="w-4 h-4" />
-                      Edit Profile
-                    </Button>
-                    <Button variant="destructive" onClick={handleSignOut} className="gap-2">
-                      <LogOut className="w-4 h-4" />
-                      Sign Out
-                    </Button>
-                  </div>
-                </>
-              )}
+                <div className="text-center">
+                  <div className="font-bold text-foreground text-lg">{stats.completed}</div>
+                  <div>Completed</div>
+                </div>
+                <div className="text-center">
+                  <div className="font-bold text-foreground text-lg">{stats.plan_to_watch}</div>
+                  <div>Planned</div>
+                </div>
+              </div>
             </div>
-          </div>
-        </GlassPanel>
 
-        {/* Tabs */}
-        <Tabs defaultValue="watchlist" className="space-y-6">
-          <TabsList className="bg-muted/50 p-1">
-            <TabsTrigger value="watchlist" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <List className="w-4 h-4" />
-              Watchlist
-            </TabsTrigger>
-            <TabsTrigger value="history" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <History className="w-4 h-4" />
-              History
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Watchlist Tab */}
-          <TabsContent value="watchlist">
-            <GlassPanel className="p-6">
-              <h2 className="font-display text-xl font-semibold mb-6 flex items-center gap-2">
-                <List className="w-5 h-5 text-primary" />
-                My Watchlist
-                <span className="text-sm font-normal text-muted-foreground">
-                  ({watchlist?.length || 0} anime)
-                </span>
-              </h2>
-              
-              {loadingWatchlist ? (
-                <div className="text-center py-12 text-muted-foreground">Loading...</div>
-              ) : watchlist && watchlist.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                  {watchlist.map((item) => {
-                    const statusInfo = STATUS_LABELS[item.status || 'plan_to_watch'];
-                    return (
-                      <div
-                        key={item.id}
-                        className="group cursor-pointer"
-                        onClick={() => navigate(`/anime/${item.anime_id}`)}
-                      >
-                        <div className="relative aspect-[3/4] rounded-xl overflow-hidden mb-2">
-                          <img
-                            src={getProxiedImageUrl(item.anime_poster || '/placeholder.svg')}
-                            alt={item.anime_name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            {/* Info Column */}
+            <div className="flex-1 pt-2 md:pt-12 w-full">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                <div>
+                  {isEditing && !isViewingOther ? (
+                    <div className="space-y-4 w-full max-w-md">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Display Name</Label>
+                          <Input
+                            value={displayName}
+                            onChange={(e) => setDisplayName(e.target.value)}
+                            className="bg-background/50 backdrop-blur-sm"
                           />
-                          <div className={`absolute top-2 left-2 px-2 py-1 rounded-lg bg-background/80 backdrop-blur-sm flex items-center gap-1 text-xs ${statusInfo?.color}`}>
-                            {statusInfo?.icon}
-                            {statusInfo?.label}
-                          </div>
                         </div>
-                        <h3 className="font-medium text-sm line-clamp-2 group-hover:text-primary transition-colors">
-                          {item.anime_name}
-                        </h3>
+                        <div className="space-y-2">
+                          <Label>Username</Label>
+                          <Input
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            placeholder="@username"
+                            className="bg-background/50 backdrop-blur-sm"
+                          />
+                        </div>
                       </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <List className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">Your watchlist is empty</p>
-                  <Button onClick={() => navigate('/')} className="mt-4">
-                    Browse Anime
-                  </Button>
-                </div>
-              )}
-            </GlassPanel>
-          </TabsContent>
-
-          {/* History Tab */}
-          <TabsContent value="history">
-            <GlassPanel className="p-6">
-              <h2 className="font-display text-xl font-semibold mb-6 flex items-center gap-2">
-                <History className="w-5 h-5 text-primary" />
-                Watch History
-              </h2>
-              
-              {loadingHistory ? (
-                <div className="text-center py-12 text-muted-foreground">Loading...</div>
-              ) : history && history.length > 0 ? (
-                <div className="space-y-4">
-                  {history.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex gap-4 p-4 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
-                      onClick={() => navigate(`/watch/${encodeURIComponent(item.episode_id)}`)}
-                    >
-                      <img
-                        src={getProxiedImageUrl(item.anime_poster || '/placeholder.svg')}
-                        alt={item.anime_name}
-                        className="w-20 h-28 object-cover rounded-lg"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-medium mb-1 line-clamp-1">{item.anime_name}</h3>
-                        <p className="text-sm text-muted-foreground mb-2">
-                          Episode {item.episode_number}
-                        </p>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Clock className="w-3 h-3" />
-                          {formatDate(item.watched_at)}
-                        </div>
-                        {item.duration_seconds && (
-                          <div className="mt-2 h-1 bg-muted rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-primary"
-                              style={{
-                                width: `${Math.min(100, ((item.progress_seconds || 0) / item.duration_seconds) * 100)}%`,
-                              }}
-                            />
-                          </div>
+                      <div className="space-y-2">
+                        <Label>Bio</Label>
+                        <Textarea
+                          value={bio}
+                          onChange={(e) => setBio(e.target.value)}
+                          placeholder="Tell us about yourself..."
+                          className="bg-background/50 backdrop-blur-sm resize-none"
+                          rows={3}
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button onClick={handleSaveProfile} disabled={isSaving} className="gap-2">
+                          <Save className="w-4 h-4" />
+                          Save Changes
+                        </Button>
+                        <Button variant="outline" onClick={() => setIsEditing(false)}>
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-3 mb-1">
+                        <h1 className="text-3xl md:text-4xl font-black tracking-tight">
+                          {profile?.display_name || profile?.username || 'User'}
+                        </h1>
+                        {isViewingOther && publicProfile?.is_public && (
+                          <span title="Public Profile">
+                            <Globe className="w-5 h-5 text-green-500" />
+                          </span>
+                        )}
+                        {!isViewingOther && isAdmin && (
+                          <span className="px-2 py-0.5 rounded-full bg-primary/20 text-primary text-xs font-bold border border-primary/20 flex items-center gap-1">
+                            <Shield className="w-3 h-3" /> ADMIN
+                          </span>
                         )}
                       </div>
-                      {item.completed && (
-                        <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+                      <div className="text-muted-foreground mb-4 flex items-center gap-2">
+                        <span>@{profile?.username || 'username'}</span>
+                        {!isViewingOther && user && (
+                          <>
+                            <span>•</span>
+                            <span>{user.email}</span>
+                          </>
+                        )}
+                      </div>
+                      {profile?.bio && (
+                        <p className="text-foreground/80 max-w-2xl leading-relaxed mb-4">
+                          {profile.bio}
+                        </p>
                       )}
-                    </div>
-                  ))}
+                      
+                      {/* Social Links Display */}
+                      {profile?.social_links && (
+                        <div className="mb-6">
+                          <SocialLinksDisplay links={profile.social_links as SocialLinks} />
+                        </div>
+                      )}
+                      
+                      {/* Action buttons - only for own profile */}
+                      {!isViewingOther && (
+                        <div className="flex flex-wrap gap-3">
+                          <Button variant="outline" onClick={() => setIsEditing(true)} className="gap-2 bg-background/50 backdrop-blur-sm hover:bg-background/80">
+                            <Edit2 className="w-4 h-4" />
+                            Edit Profile
+                          </Button>
+                          <SocialLinksEditor
+                            currentLinks={(ownProfile?.social_links as SocialLinks) || {}}
+                            isPublic={ownProfile?.is_public ?? false}
+                            showWatchlist={ownProfile?.show_watchlist ?? true}
+                            showHistory={ownProfile?.show_history ?? true}
+                            trigger={
+                              <Button variant="outline" className="gap-2 bg-background/50 backdrop-blur-sm hover:bg-background/80">
+                                <Share2 className="w-4 h-4" />
+                                Social & Privacy
+                              </Button>
+                            }
+                          />
+                          {isAdmin && (
+                            <Button
+                              variant="outline"
+                              onClick={() => navigate('/admin')}
+                              className="gap-2 bg-background/50 backdrop-blur-sm hover:bg-background/80 border-primary/50 text-primary"
+                            >
+                              <Settings className="w-4 h-4" />
+                              Admin Dashboard
+                            </Button>
+                          )}
+                          <Button variant="destructive" onClick={handleSignOut} className="gap-2">
+                            <LogOut className="w-4 h-4" />
+                            Sign Out
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
-              ) : (
-                <div className="text-center py-12">
-                  <History className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">No watch history yet</p>
-                  <Button onClick={() => navigate('/')} className="mt-4">
-                    Start Watching
-                  </Button>
+
+                {/* Desktop Stats */}
+                <div className="hidden md:flex gap-8 p-6 rounded-2xl bg-background/40 backdrop-blur-md border border-white/5">
+                  <div className="text-center">
+                    <div className="text-2xl font-black text-foreground">{stats.watching}</div>
+                    <div className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Watching</div>
+                  </div>
+                  <div className="w-px bg-white/10" />
+                  <div className="text-center">
+                    <div className="text-2xl font-black text-green-500">{stats.completed}</div>
+                    <div className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Completed</div>
+                  </div>
+                  <div className="w-px bg-white/10" />
+                  <div className="text-center">
+                    <div className="text-2xl font-black text-amber-500">{stats.plan_to_watch}</div>
+                    <div className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Planned</div>
+                  </div>
+                  <div className="w-px bg-white/10" />
+                  <div className="text-center">
+                    <div className="text-2xl font-black text-foreground">{stats.total}</div>
+                    <div className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Total</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Content Tabs */}
+          <div className="mt-12">
+            <Tabs defaultValue={showWatchlistTab ? "watchlist" : (showHistoryTab ? "history" : "watchlist")} className="space-y-8">
+              <TabsList className="bg-background/40 backdrop-blur-md p-1 border border-white/5 rounded-xl w-full md:w-auto flex overflow-x-auto">
+                {showWatchlistTab && (
+                  <TabsTrigger value="watchlist" className="flex-1 md:flex-none gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-6">
+                    <List className="w-4 h-4" />
+                    Watchlist
+                  </TabsTrigger>
+                )}
+                {showHistoryTab && (
+                  <TabsTrigger value="history" className="flex-1 md:flex-none gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-6">
+                    <History className="w-4 h-4" />
+                    History
+                  </TabsTrigger>
+                )}
+              </TabsList>
+
+              {/* No data available message for public profiles with hidden data */}
+              {isViewingOther && !showWatchlistTab && !showHistoryTab && (
+                <div className="text-center py-12 border-2 border-dashed border-white/5 rounded-2xl">
+                  <Lock className="w-12 h-12 mx-auto text-muted-foreground/30 mb-4" />
+                  <p className="text-muted-foreground">This user has chosen to keep their anime lists private.</p>
                 </div>
               )}
-            </GlassPanel>
-          </TabsContent>
-        </Tabs>
+
+              {showWatchlistTab && (
+              <TabsContent value="watchlist" className="mt-6">
+                <GlassPanel className="p-6 md:p-8">
+                  <div className="flex items-center justify-between mb-8">
+                    <h2 className="text-2xl font-bold flex items-center gap-2">
+                      <List className="w-6 h-6 text-primary" />
+                      {isViewingOther ? 'Watchlist' : 'My Watchlist'}
+                    </h2>
+                    <span className="text-sm text-muted-foreground">
+                      {watchlist?.length || 0} items
+                    </span>
+                  </div>
+                  
+                  {loadingWatchlist ? (
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                      {[...Array(6)].map((_, i) => (
+                        <div key={i} className="aspect-[3/4] bg-muted/50 rounded-xl animate-pulse" />
+                      ))}
+                    </div>
+                  ) : watchlist && watchlist.length > 0 ? (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+                      {watchlist.map((item) => {
+                        const statusInfo = STATUS_LABELS[item.status || 'plan_to_watch'];
+                        return (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            key={item.id}
+                            className="group cursor-pointer relative"
+                            onClick={() => navigate(`/anime/${item.anime_id}`)}
+                          >
+                            <div className="relative aspect-[3/4] rounded-xl overflow-hidden mb-3 shadow-lg group-hover:shadow-primary/20 transition-all duration-300 ring-1 ring-white/10 group-hover:ring-primary/50">
+                              <img
+                                src={getProxiedImageUrl(item.anime_poster || '/placeholder.svg')}
+                                alt={item.anime_name}
+                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                loading="lazy"
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                              
+                              <div className={`absolute top-2 left-2 px-2 py-1 rounded-md backdrop-blur-md flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide ${statusInfo?.bg} ${statusInfo?.color} border border-white/5`}>
+                                {statusInfo?.icon}
+                                {statusInfo?.label}
+                              </div>
+                            </div>
+                            <h3 className="font-bold text-sm line-clamp-1 group-hover:text-primary transition-colors">
+                              {item.anime_name}
+                            </h3>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-20 border-2 border-dashed border-white/5 rounded-2xl">
+                      <List className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" />
+                      <h3 className="text-xl font-bold mb-2">{isViewingOther ? 'Watchlist is empty' : 'Your watchlist is empty'}</h3>
+                      <p className="text-muted-foreground mb-6">{isViewingOther ? 'This user hasn\'t added any anime yet.' : 'Start adding anime to track your progress!'}</p>
+                      {!isViewingOther && (
+                        <Button onClick={() => navigate('/')}>
+                          Browse Anime
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </GlassPanel>
+              </TabsContent>
+              )}
+
+              {showHistoryTab && (
+              <TabsContent value="history" className="mt-6">
+                <GlassPanel className="p-6 md:p-8">
+                  <h2 className="text-2xl font-bold mb-8 flex items-center gap-2">
+                    <History className="w-6 h-6 text-primary" />
+                    Watch History
+                  </h2>
+                  
+                  {loadingHistory ? (
+                    <div className="space-y-4">
+                      {[...Array(3)].map((_, i) => (
+                        <div key={i} className="h-24 bg-muted/50 rounded-xl animate-pulse" />
+                      ))}
+                    </div>
+                  ) : history && history.length > 0 ? (
+                    <div className="space-y-3">
+                      {history.map((item, index) => (
+                        <motion.div
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.05 }}
+                          key={item.id}
+                          className="flex gap-4 p-3 rounded-xl bg-background/40 hover:bg-background/60 border border-white/5 hover:border-primary/20 transition-all cursor-pointer group"
+                          onClick={() => navigate(`/watch/${encodeURIComponent(item.episode_id)}`)}
+                        >
+                          <div className="relative w-32 aspect-video rounded-lg overflow-hidden flex-shrink-0">
+                            <img
+                              src={getProxiedImageUrl(item.anime_poster || '/placeholder.svg')}
+                              alt={item.anime_name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              loading="lazy"
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Play className="w-8 h-8 text-white fill-white" />
+                            </div>
+                            {item.duration_seconds && (
+                              <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/50">
+                                <div
+                                  className="h-full bg-primary"
+                                  style={{
+                                    width: `${Math.min(100, ((item.progress_seconds || 0) / item.duration_seconds) * 100)}%`,
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="flex-1 min-w-0 py-1 flex flex-col justify-center">
+                            <h3 className="font-bold text-lg line-clamp-1 group-hover:text-primary transition-colors">
+                              {item.anime_name}
+                            </h3>
+                            <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
+                              <span className="text-foreground/80 font-medium">Episode {item.episode_number}</span>
+                              <span>•</span>
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {formatDate(item.watched_at)}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          {item.completed && (
+                            <div className="flex items-center px-4">
+                              <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center text-green-500">
+                                <CheckCircle className="w-5 h-5" />
+                              </div>
+                            </div>
+                          )}
+                        </motion.div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-20 border-2 border-dashed border-white/5 rounded-2xl">
+                      <History className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" />
+                      <h3 className="text-xl font-bold mb-2">No watch history</h3>
+                      <p className="text-muted-foreground mb-6">{isViewingOther ? 'This user hasn\'t watched any episodes yet.' : 'Episodes you watch will appear here.'}</p>
+                      {!isViewingOther && (
+                        <Button onClick={() => navigate('/')}>
+                          Start Watching
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </GlassPanel>
+              </TabsContent>
+              )}
+            </Tabs>
+          </div>
+        </div>
       </main>
 
       <MobileNav />

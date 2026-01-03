@@ -93,30 +93,69 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          banner_url: string | null
           bio: string | null
           created_at: string
           display_name: string | null
           id: string
+          is_public: boolean
+          is_banned: boolean
+          ban_reason: string | null
+          mal_access_token: string | null
+          mal_refresh_token: string | null
+          mal_username: string | null
+          anilist_access_token: string | null
+          anilist_username: string | null
+          showcase_anime: Json | null
+          social_links: Json | null
+          show_watchlist: boolean
+          show_history: boolean
           updated_at: string
           user_id: string
           username: string | null
         }
         Insert: {
           avatar_url?: string | null
+          banner_url?: string | null
           bio?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
+          is_public?: boolean
+          is_banned?: boolean
+          ban_reason?: string | null
+          mal_access_token?: string | null
+          mal_refresh_token?: string | null
+          mal_username?: string | null
+          anilist_access_token?: string | null
+          anilist_username?: string | null
+          showcase_anime?: Json | null
+          social_links?: Json | null
+          show_watchlist?: boolean
+          show_history?: boolean
           updated_at?: string
           user_id: string
           username?: string | null
         }
         Update: {
           avatar_url?: string | null
+          banner_url?: string | null
           bio?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
+          is_public?: boolean
+          is_banned?: boolean
+          ban_reason?: string | null
+          mal_access_token?: string | null
+          mal_refresh_token?: string | null
+          mal_username?: string | null
+          anilist_access_token?: string | null
+          anilist_username?: string | null
+          showcase_anime?: Json | null
+          social_links?: Json | null
+          show_watchlist?: boolean
+          show_history?: boolean
           updated_at?: string
           user_id?: string
           username?: string | null
@@ -248,6 +287,355 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      tier_lists: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          description: string | null
+          items: Json
+          is_public: boolean
+          share_code: string
+          views_count: number
+          likes_count: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          description?: string | null
+          items?: Json
+          is_public?: boolean
+          share_code?: string
+          views_count?: number
+          likes_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          description?: string | null
+          items?: Json
+          is_public?: boolean
+          share_code?: string
+          views_count?: number
+          likes_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      tier_list_likes: {
+        Row: {
+          id: string
+          tier_list_id: string
+          user_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          tier_list_id: string
+          user_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          tier_list_id?: string
+          user_id?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      tier_list_comments: {
+        Row: {
+          id: string
+          tier_list_id: string
+          user_id: string
+          content: string
+          parent_id: string | null
+          likes_count: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          tier_list_id: string
+          user_id: string
+          content: string
+          parent_id?: string | null
+          likes_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          tier_list_id?: string
+          user_id?: string
+          content?: string
+          parent_id?: string | null
+          likes_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tier_list_comments_tier_list_id_fkey"
+            columns: ["tier_list_id"]
+            isOneToOne: false
+            referencedRelation: "tier_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tier_list_comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "tier_list_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tier_list_comment_likes: {
+        Row: {
+          id: string
+          comment_id: string
+          user_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          comment_id: string
+          user_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          comment_id?: string
+          user_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tier_list_comment_likes_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "tier_list_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      custom_video_sources: {
+        Row: {
+          id: string
+          anime_id: string
+          anime_title: string
+          episode_number: number
+          server_name: string
+          video_url: string
+          quality: string
+          is_active: boolean
+          priority: number
+          added_by: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          anime_id: string
+          anime_title: string
+          episode_number: number
+          server_name: string
+          video_url: string
+          quality?: string
+          is_active?: boolean
+          priority?: number
+          added_by: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          anime_id?: string
+          anime_title?: string
+          episode_number?: number
+          server_name?: string
+          video_url?: string
+          quality?: string
+          is_active?: boolean
+          priority?: number
+          added_by?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      page_visits: {
+        Row: {
+          id: string
+          session_id: string
+          user_id: string | null
+          page_path: string
+          ip_address: string | null
+          country: string | null
+          city: string | null
+          user_agent: string | null
+          referrer: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          session_id: string
+          user_id?: string | null
+          page_path: string
+          ip_address?: string | null
+          country?: string | null
+          city?: string | null
+          user_agent?: string | null
+          referrer?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          session_id?: string
+          user_id?: string | null
+          page_path?: string
+          ip_address?: string | null
+          country?: string | null
+          city?: string | null
+          user_agent?: string | null
+          referrer?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      watch_sessions: {
+        Row: {
+          id: string
+          user_id: string | null
+          session_id: string
+          anime_id: string
+          episode_id: string
+          anime_name: string | null
+          anime_poster: string | null
+          genres: string[] | null
+          watch_duration_seconds: number
+          start_time: string
+          end_time: string | null
+          ip_address: string | null
+          country: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          session_id: string
+          anime_id: string
+          episode_id: string
+          anime_name?: string | null
+          anime_poster?: string | null
+          genres?: string[] | null
+          watch_duration_seconds?: number
+          start_time?: string
+          end_time?: string | null
+          ip_address?: string | null
+          country?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          session_id?: string
+          anime_id?: string
+          episode_id?: string
+          anime_name?: string | null
+          anime_poster?: string | null
+          genres?: string[] | null
+          watch_duration_seconds?: number
+          start_time?: string
+          end_time?: string | null
+          ip_address?: string | null
+          country?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      playlists: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          description: string | null
+          cover_image: string | null
+          is_public: boolean
+          items_count: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          description?: string | null
+          cover_image?: string | null
+          is_public?: boolean
+          items_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          description?: string | null
+          cover_image?: string | null
+          is_public?: boolean
+          items_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      playlist_items: {
+        Row: {
+          id: string
+          playlist_id: string
+          anime_id: string
+          anime_name: string
+          anime_poster: string | null
+          position: number
+          added_at: string
+        }
+        Insert: {
+          id?: string
+          playlist_id: string
+          anime_id: string
+          anime_name: string
+          anime_poster?: string | null
+          position?: number
+          added_at?: string
+        }
+        Update: {
+          id?: string
+          playlist_id?: string
+          anime_id?: string
+          anime_name?: string
+          anime_poster?: string | null
+          position?: number
+          added_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playlist_items_playlist_id_fkey"
+            columns: ["playlist_id"]
+            isOneToOne: false
+            referencedRelation: "playlists"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

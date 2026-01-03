@@ -4,10 +4,13 @@ import { useComments, useReplies, useAddComment, useDeleteComment, useLikeCommen
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MessageSquare, Heart, Reply, Trash2, ChevronDown, ChevronUp, AlertTriangle, Loader2 } from 'lucide-react';
+import { MessageSquare, Heart, Reply, Trash2, ChevronDown, ChevronUp, AlertTriangle, Loader2, Ban, MoreVertical } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useNavigate } from 'react-router-dom';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface CommentsSectionProps {
   animeId: string;
@@ -26,6 +29,7 @@ interface CommentItemProps {
     profile?: {
       display_name: string | null;
       avatar_url: string | null;
+      username: string | null;
     };
     user_has_liked?: boolean;
   };
@@ -35,11 +39,13 @@ interface CommentItemProps {
 }
 
 function CommentItem({ comment, animeId, episodeId, isReply = false }: CommentItemProps) {
-  const { user, isModerator } = useAuth();
+  const navigate = useNavigate();
+  const { user, isModerator, isAdmin } = useAuth();
   const [showReplies, setShowReplies] = useState(false);
   const [showReplyInput, setShowReplyInput] = useState(false);
   const [replyContent, setReplyContent] = useState('');
   const [revealSpoiler, setRevealSpoiler] = useState(false);
+  const [isBanning, setIsBanning] = useState(false);
   
   const { data: replies, isLoading: loadingReplies } = useReplies(showReplies ? comment.id : undefined);
   const addComment = useAddComment();
@@ -64,7 +70,28 @@ function CommentItem({ comment, animeId, episodeId, isReply = false }: CommentIt
     likeComment.mutate({ commentId: comment.id, liked: comment.user_has_liked || false });
   };
 
+  const handleBanUser = async () => {
+    if (!isAdmin || !comment.user_id) return;
+    setIsBanning(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ is_banned: true, ban_reason: 'Banned from comment section by admin' })
+        .eq('user_id', comment.user_id);
+      
+      if (error) throw error;
+      toast.success('User has been banned');
+      // Also delete the comment
+      await deleteComment.mutateAsync(comment.id);
+    } catch (error: any) {
+      toast.error('Failed to ban user: ' + error.message);
+    } finally {
+      setIsBanning(false);
+    }
+  };
+
   const canDelete = user?.id === comment.user_id || isModerator;
+  const canModerate = isAdmin && user?.id !== comment.user_id;
 
   return (
     <div className={`${isReply ? 'ml-8 md:ml-12' : ''}`}>
@@ -78,7 +105,13 @@ function CommentItem({ comment, animeId, episodeId, isReply = false }: CommentIt
         
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <span className="font-medium text-sm">{comment.profile?.display_name || 'Anonymous'}</span>
+            <button 
+              onClick={() => comment.profile?.username && navigate(`/@${comment.profile.username}`)}
+              disabled={!comment.profile?.username}
+              className={`font-medium text-sm ${comment.profile?.username ? 'hover:text-primary hover:underline cursor-pointer' : ''}`}
+            >
+              {comment.profile?.display_name || 'Anonymous'}
+            </button>
             <span className="text-xs text-muted-foreground">
               {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
             </span>
@@ -131,6 +164,36 @@ function CommentItem({ comment, animeId, episodeId, isReply = false }: CommentIt
               >
                 <Trash2 className="w-4 h-4" />
               </button>
+            )}
+
+            {/* Admin moderation menu */}
+            {canModerate && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem
+                    onClick={() => deleteComment.mutate(comment.id)}
+                    disabled={deleteComment.isPending}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Comment
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={handleBanUser}
+                    disabled={isBanning}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Ban className="w-4 h-4 mr-2" />
+                    {isBanning ? 'Banning...' : 'Ban User'}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
           

@@ -22,6 +22,7 @@ export interface LocalContinueWatchingItem {
   watchedAt: string;
   serverName?: string; // Save the server preference
   category?: 'sub' | 'dub'; // Save sub/dub preference
+  languageCode?: string; // Save WatchAnimeWorld language preference (e.g., 'hi', 'ta')
 }
 
 // Watchlist functions

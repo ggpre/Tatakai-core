@@ -252,6 +252,17 @@ Deploy video-proxy function:
 supabase functions deploy video-proxy
 ```
 
+Deploy watchanimeworld-scraper function:
+```bash
+supabase functions deploy watchanimeworld-scraper
+```
+
+Set WatchAnimeWorld scraper environment variables:
+```bash
+supabase secrets set WATCHAW_CACHE_TTL=600
+supabase secrets set WATCHAW_RATE_LIMIT=30
+```
+
 ## Environment Variables
 
 ### Production .env

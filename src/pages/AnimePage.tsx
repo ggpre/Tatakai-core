@@ -1,5 +1,6 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAnimeInfo, useEpisodes } from "@/hooks/useAnimeData";
+import { useAnimeSeasons } from "@/hooks/useAnimeSeasons";
 import { Background } from "@/components/layout/Background";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
@@ -11,15 +12,18 @@ import { CommentsSection } from "@/components/anime/CommentsSection";
 import { RatingsSection } from "@/components/anime/RatingsSection";
 import { WatchlistButton } from "@/components/anime/WatchlistButton";
 import { ShareButton } from "@/components/anime/ShareButton";
-import { ArrowLeft, Play, Star, Calendar, Clock, Film, Tv } from "lucide-react";
+import { AddToPlaylistButton } from "@/components/playlist/AddToPlaylistButton";
+import { ArrowLeft, Play, Star, Calendar, Clock, Film, Tv, Layers } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import { getProxiedImageUrl } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 export default function AnimePage() {
   const { animeId } = useParams<{ animeId: string }>();
   const navigate = useNavigate();
   const { data: animeData, isLoading: loadingInfo } = useAnimeInfo(animeId);
   const { data: episodesData, isLoading: loadingEpisodes } = useEpisodes(animeId);
+  const { data: seasons = [], isLoading: loadingSeasons } = useAnimeSeasons(animeId);
 
   // Auto-select episode 1 when clicking watch
   const handleWatchNow = () => {
@@ -213,6 +217,12 @@ export default function AnimePage() {
                     animePoster={info.poster}
                     variant="icon"
                   />
+                  <AddToPlaylistButton
+                    animeId={animeId!}
+                    animeName={info.name}
+                    animePoster={info.poster}
+                    variant="icon"
+                  />
                   <ShareButton
                     animeId={animeId!}
                     animeName={info.name}
@@ -254,6 +264,53 @@ export default function AnimePage() {
               </div>
             ) : null}
           </section>
+
+          {/* Seasons Section */}
+          {seasons.length > 1 && (
+            <section className="mb-16">
+              <h2 className="font-display text-2xl font-semibold mb-6 flex items-center gap-2">
+                <Layers className="w-5 h-5 text-primary" />
+                Seasons
+              </h2>
+              <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+                {seasons.map((season) => (
+                  <Link
+                    key={season.id}
+                    to={`/anime/${season.id}`}
+                    className={cn(
+                      "flex-shrink-0 group",
+                      season.isCurrent && "pointer-events-none"
+                    )}
+                  >
+                    <div className={cn(
+                      "relative w-32 md:w-40 rounded-xl overflow-hidden transition-all",
+                      season.isCurrent 
+                        ? "ring-2 ring-primary ring-offset-2 ring-offset-background" 
+                        : "hover:scale-105"
+                    )}>
+                      <img 
+                        src={getProxiedImageUrl(season.poster)} 
+                        alt={season.name}
+                        className="w-full aspect-[2/3] object-cover"
+                      />
+                      {season.isCurrent && (
+                        <div className="absolute top-2 right-2 px-2 py-1 rounded-full bg-primary text-primary-foreground text-xs font-bold">
+                          Current
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                    <p className={cn(
+                      "mt-2 text-sm font-medium line-clamp-2 text-center",
+                      season.isCurrent ? "text-primary" : "text-foreground group-hover:text-primary transition-colors"
+                    )}>
+                      {season.name}
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* Ratings Section */}
           <section className="mb-16">

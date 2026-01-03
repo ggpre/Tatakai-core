@@ -1,4 +1,4 @@
-import { Play, LayoutGrid, Search, TrendingUp, Heart, User, Settings, LogIn } from "lucide-react";
+import { Play, LayoutGrid, Search, TrendingUp, Heart, User, Settings, LogIn, Trophy } from "lucide-react";
 import { NavIcon } from "@/components/ui/NavIcon";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 export function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, isBanned } = useAuth();
+  const { user, profile, isBanned } = useAuth();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -44,11 +44,17 @@ export function Sidebar() {
         onClick={() => navigate("/favorites")}
         label="Favorites"
       />
+      <NavIcon 
+        icon={Trophy} 
+        active={isActive("/tierlists")} 
+        onClick={() => navigate("/tierlists")}
+        label="Tier Lists"
+      />
       {user && !isBanned ? (
         <NavIcon 
           icon={User} 
-          active={isActive("/profile")} 
-          onClick={() => navigate("/profile")}
+          active={location.pathname.startsWith('/@') || isActive("/profile")} 
+          onClick={() => navigate(profile?.username ? `/@${profile.username}` : '/profile')}
           label="Profile"
         />
       ) : (

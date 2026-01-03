@@ -2,37 +2,12 @@ import { motion } from "framer-motion";
 import { Wrench, Clock, RefreshCw, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { StatusVideoBackground } from "@/components/layout/StatusVideoBackground";
 
 const MaintenancePage = () => {
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4 overflow-hidden relative">
-      {/* Animated gears background */}
-      <div className="absolute inset-0 overflow-hidden opacity-5">
-        <motion.div
-          className="absolute top-10 left-10 w-40 h-40 border-8 border-primary rounded-full"
-          style={{ borderTopColor: 'transparent', borderLeftColor: 'transparent' }}
-          animate={{ rotate: 360 }}
-          transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-        />
-        <motion.div
-          className="absolute top-32 left-36 w-24 h-24 border-6 border-primary rounded-full"
-          style={{ borderBottomColor: 'transparent', borderRightColor: 'transparent' }}
-          animate={{ rotate: -360 }}
-          transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
-        />
-        <motion.div
-          className="absolute bottom-20 right-20 w-56 h-56 border-8 border-accent rounded-full"
-          style={{ borderTopColor: 'transparent', borderRightColor: 'transparent' }}
-          animate={{ rotate: 360 }}
-          transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-        />
-      </div>
-
-      {/* Gradient orbs */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/3 -left-32 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/3 -right-32 w-64 h-64 bg-orange-500/10 rounded-full blur-3xl" />
-      </div>
+    <div className="min-h-screen flex items-center justify-center p-4 overflow-hidden relative">
+      <StatusVideoBackground overlayColor="from-amber-500/10 via-background/90 to-background" />
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}

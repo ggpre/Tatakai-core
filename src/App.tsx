@@ -3,11 +3,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useSmartTV } from "@/hooks/useSmartTV";
 import { useTheme } from "@/hooks/useTheme";
 import { useMaintenanceMode } from "@/hooks/useAdminMessages";
+import { usePageTracking } from "@/hooks/useAnalytics";
 import Index from "./pages/Index";
 import AnimePage from "./pages/AnimePage";
 import WatchPage from "./pages/WatchPage";
@@ -25,6 +26,8 @@ import MaintenancePage from "./pages/MaintenancePage";
 import ServiceUnavailablePage from "./pages/ServiceUnavailablePage";
 import BannedPage from "./pages/BannedPage";
 import ErrorPage from "./pages/ErrorPage";
+import TierListPage, { TierListViewPage } from "./pages/TierListPage";
+import PlaylistsPage, { PlaylistViewPage } from "./pages/PlaylistPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -34,6 +37,19 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+// Handler for /@username routes
+function AtUsernameHandler() {
+  const { atUsername } = useParams<{ atUsername: string }>();
+  
+  // If the param starts with @, extract username and show profile
+  if (atUsername?.startsWith('@')) {
+    return <ProfilePage key={atUsername} />;
+  }
+  
+  // Otherwise, show 404
+  return <NotFound />;
+}
 
 // Protected route wrapper that checks for banned users and maintenance mode
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -70,10 +86,26 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// Status page guard that only shows pages when user is in the appropriate state
+function StatusPageGuard({ 
+  children, 
+  allowedWhen, 
+  redirectTo = "/" 
+}: { 
+  children: React.ReactNode; 
+  allowedWhen: boolean; 
+  redirectTo?: string; 
+}) {
+  return allowedWhen ? <>{children}</> : <Navigate to={redirectTo} replace />;
+}
+
 function AppContent() {
   // Initialize theme and smart TV detection
   useTheme();
+  usePageTracking(); // Track page visits for analytics
   const { isSmartTV, platform } = useSmartTV();
+  const { isBanned, isAdmin } = useAuth();
+  const { isMaintenanceMode } = useMaintenanceMode();
 
   useEffect(() => {
     if (isSmartTV) {
@@ -87,11 +119,27 @@ function AppContent() {
       <Sonner />
       <BrowserRouter>
         <Routes>
-          {/* Public routes */}
-          <Route path="/maintenance" element={<MaintenancePage />} />
-          <Route path="/banned" element={<BannedPage />} />
-          <Route path="/503" element={<ServiceUnavailablePage />} />
-          <Route path="/error" element={<ErrorPage />} />
+          {/* Status pages - only accessible when in appropriate state */}
+          <Route path="/maintenance" element={
+            <StatusPageGuard allowedWhen={isMaintenanceMode}>
+              <MaintenancePage />
+            </StatusPageGuard>
+          } />
+          <Route path="/banned" element={
+            <StatusPageGuard allowedWhen={isBanned}>
+              <BannedPage />
+            </StatusPageGuard>
+          } />
+          <Route path="/503" element={
+            <StatusPageGuard allowedWhen={false}>
+              <ServiceUnavailablePage />
+            </StatusPageGuard>
+          } />
+          <Route path="/error" element={
+            <StatusPageGuard allowedWhen={false}>
+              <ErrorPage />
+            </StatusPageGuard>
+          } />
           <Route path="/auth" element={<AuthPage />} />
           
           {/* Protected routes */}
@@ -106,6 +154,12 @@ function AppContent() {
           <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
           <Route path="/status" element={<ProtectedRoute><StatusPage /></ProtectedRoute>} />
+          <Route path="/tierlists" element={<ProtectedRoute><TierListPage /></ProtectedRoute>} />
+          <Route path="/tierlist/:shareCode" element={<ProtectedRoute><TierListViewPage /></ProtectedRoute>} />
+          <Route path="/playlists" element={<ProtectedRoute><PlaylistsPage /></ProtectedRoute>} />
+          <Route path="/playlist/:playlistId" element={<ProtectedRoute><PlaylistViewPage /></ProtectedRoute>} />
+          <Route path="/user/:username" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+          <Route path="/:atUsername" element={<ProtectedRoute><AtUsernameHandler /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
