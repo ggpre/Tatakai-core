@@ -12,7 +12,10 @@ export type Theme =
   | 'light-sakura'
   | 'brutalism-dark'
   | 'obsidian'
-  | 'solar';
+  | 'solar'
+  | 'caffeine'
+  | 'brutalism-plus'
+  | 'dark-matter';
 
 interface ThemeColors {
   primary: string;
@@ -269,6 +272,64 @@ export const THEME_COLORS: Record<Theme, ThemeColors> = {
     sidebarBackground: '40 25% 3%',
     sidebarBorder: '40 13% 14%',
   },
+  'caffeine': {
+    primary: '30 90% 55%',
+    secondary: '20 85% 50%',
+    accent: '40 95% 60%',
+    background: '28 25% 5%',
+    foreground: '30 10% 95%',
+    card: '28 20% 8%',
+    cardForeground: '30 10% 95%',
+    muted: '28 15% 14%',
+    mutedForeground: '28 10% 55%',
+    border: '28 15% 20%',
+    glass: '28 18% 10%',
+    glowPrimary: '30 90% 55%',
+    glowSecondary: '20 85% 50%',
+    surface: '28 20% 6%',
+    surfaceHover: '28 20% 12%',
+    sidebarBackground: '28 25% 4%',
+    sidebarBorder: '28 13% 16%',
+  },
+  'brutalism-plus': {
+    primary: '0 0% 100%',
+    secondary: '280 100% 60%',
+    accent: '160 100% 50%',
+    background: '0 0% 5%',
+    foreground: '0 0% 100%',
+    card: '0 0% 8%',
+    cardForeground: '0 0% 100%',
+    muted: '0 0% 15%',
+    mutedForeground: '0 0% 70%',
+    border: '0 0% 100%',
+    glass: '0 0% 8%',
+    glowPrimary: '280 100% 60%',
+    glowSecondary: '160 100% 50%',
+    surface: '0 0% 6%',
+    surfaceHover: '0 0% 12%',
+    sidebarBackground: '0 0% 3%',
+    sidebarBorder: '0 0% 100%',
+    isBrutalism: true,
+  },
+  'dark-matter': {
+    primary: '270 100% 70%',
+    secondary: '290 90% 65%',
+    accent: '250 95% 75%',
+    background: '260 30% 2%',
+    foreground: '270 10% 98%',
+    card: '260 25% 4%',
+    cardForeground: '270 10% 98%',
+    muted: '260 20% 8%',
+    mutedForeground: '260 12% 60%',
+    border: '260 25% 12%',
+    glass: '260 22% 5%',
+    glowPrimary: '270 100% 70%',
+    glowSecondary: '290 90% 65%',
+    surface: '260 25% 3%',
+    surfaceHover: '260 25% 7%',
+    sidebarBackground: '260 30% 1%',
+    sidebarBorder: '260 20% 10%',
+  },
 };
 
 export const THEME_INFO: Record<Theme, { name: string; gradient: string; description: string; icon: string; category: 'dark' | 'light' }> = {
@@ -354,6 +415,27 @@ export const THEME_INFO: Record<Theme, { name: string; gradient: string; descrip
     gradient: 'from-yellow-400 via-amber-500 to-orange-500',
     description: 'Bright solar energy',
     icon: '☀️',
+    category: 'dark',
+  },
+  'caffeine': {
+    name: 'Caffeine',
+    gradient: 'from-orange-500 via-amber-600 to-yellow-600',
+    description: 'Energizing coffee-inspired tones',
+    icon: '☕',
+    category: 'dark',
+  },
+  'brutalism-plus': {
+    name: 'Brutalist Plus',
+    gradient: 'from-gray-100 via-purple-500 to-teal-400',
+    description: 'Enhanced brutalist with vibrant accents',
+    icon: '⬜',
+    category: 'dark',
+  },
+  'dark-matter': {
+    name: 'Dark Matter',
+    gradient: 'from-purple-600 via-violet-700 to-indigo-800',
+    description: 'Deep space with cosmic purple glow',
+    icon: '🌌',
     category: 'dark',
   },
 };
