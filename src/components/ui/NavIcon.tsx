@@ -4,7 +4,7 @@ import { LucideIcon } from "lucide-react";
 interface NavIconProps {
   icon: LucideIcon;
   active?: boolean;
-  onClick?: () => void;
+  onClick?: (e?: React.MouseEvent) => void;
   label?: string;
 }
 

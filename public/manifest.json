@@ -1,0 +1,27 @@
+{
+  "name": "Tatakai - Watch Anime Online",
+  "short_name": "Tatakai",
+  "description": "Watch your favorite anime online for free in HD quality. Stream the latest anime episodes, movies, and series with English subtitles and dub.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0f",
+  "theme_color": "#6366f1",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/file_00000000c1e471fa8cb20102e33bdbed-removebg-preview.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["entertainment", "video"],
+  "lang": "en-US",
+  "dir": "ltr"
+}

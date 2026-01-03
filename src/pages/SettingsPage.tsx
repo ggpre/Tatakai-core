@@ -357,7 +357,7 @@ export default function SettingsPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-4 rounded-xl bg-primary/10 text-center">
-                    <p className="text-2xl font-bold text-primary">10+</p>
+                    <p className="text-2xl font-bold text-primary">12</p>
                     <p className="text-sm text-muted-foreground">Themes</p>
                   </div>
                   <div className="p-4 rounded-xl bg-secondary/10 text-center">
