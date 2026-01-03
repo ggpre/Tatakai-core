@@ -1,4 +1,4 @@
-import { useTheme, Theme, THEME_INFO } from '@/hooks/useTheme';
+import { useTheme, Theme } from '@/hooks/useTheme';
 import { GlassPanel } from '@/components/ui/GlassPanel';
 import { Check, Palette, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -13,7 +13,7 @@ export function ThemeSelector() {
   const renderThemeGrid = (themeList: typeof themes, startIndex: number = 0) => (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
       {themeList.map((t, index) => {
-        const info = THEME_INFO[t];
+        const info = themeInfo[t];
         const isActive = theme === t;
         
         return (
