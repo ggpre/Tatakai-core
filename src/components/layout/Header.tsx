@@ -23,7 +23,7 @@ export function Header() {
     // Check Supabase connectivity as a meaningful health check
     const checkStatus = async () => {
       try {
-        const { error } = await supabase.from('profiles').select('count').limit(1);
+        const { error } = await supabase.from('profiles').select('id').limit(1).single();
         setSystemStatus(error ? 'degraded' : 'operational');
       } catch {
         setSystemStatus('degraded');

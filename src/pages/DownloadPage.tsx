@@ -2,8 +2,9 @@ import { Background } from '@/components/layout/Background';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { MobileNav } from '@/components/layout/MobileNav';
 import { Download, Smartphone, Monitor, CheckCircle, ArrowRight, Apple, ChevronDown } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 
 export default function DownloadPage() {
   const [selectedOS, setSelectedOS] = useState<'mac' | 'win'>('mac');
@@ -28,7 +29,18 @@ export default function DownloadPage() {
         return prev + 2;
       });
     }, 50);
+
+    // Cleanup on unmount
+    return () => clearInterval(interval);
   };
+
+  // Cleanup interval on component unmount
+  useEffect(() => {
+    return () => {
+      setIsDownloading(false);
+      setDownloadProgress(0);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-black text-white overflow-x-hidden">
@@ -92,13 +104,13 @@ export default function DownloadPage() {
             <span className="font-bold text-xl tracking-tighter uppercase">Tatakai</span>
           </div>
           <div className="hidden md:flex gap-8 text-xs uppercase tracking-widest font-semibold text-gray-500">
-            <a href="/" className="hover:text-white transition-colors">Home</a>
-            <a href="/community" className="hover:text-white transition-colors">Community</a>
-            <a href="/trending" className="hover:text-white transition-colors">Trending</a>
+            <Link to="/" className="hover:text-white transition-colors">Home</Link>
+            <Link to="/community" className="hover:text-white transition-colors">Community</Link>
+            <Link to="/trending" className="hover:text-white transition-colors">Trending</Link>
           </div>
-          <a href="/auth" className="text-xs font-semibold uppercase tracking-wider text-white hover:text-gray-300 transition-colors border border-white/20 px-4 py-2 rounded-full hover:bg-white/10">
+          <Link to="/auth" className="text-xs font-semibold uppercase tracking-wider text-white hover:text-gray-300 transition-colors border border-white/20 px-4 py-2 rounded-full hover:bg-white/10">
             Account
-          </a>
+          </Link>
         </nav>
 
         {/* HERO Section */}
@@ -213,7 +225,12 @@ export default function DownloadPage() {
                     </div>
                     <div className="flex justify-between items-center text-[10px] uppercase tracking-wider text-gray-600 px-1 font-mono">
                       <span>v2.0.0 (x64)</span>
-                      <a href="#" className="hover:text-white transition-colors underline decoration-gray-800 underline-offset-4">Changelog</a>
+                      <button 
+                        onClick={() => console.log('Show changelog')} 
+                        className="hover:text-white transition-colors underline decoration-gray-800 underline-offset-4 cursor-pointer bg-transparent border-0 p-0"
+                      >
+                        Changelog
+                      </button>
                     </div>
                   </div>
 
