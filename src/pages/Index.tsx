@@ -12,6 +12,7 @@ import { AnimeGrid } from "@/components/anime/AnimeGrid";
 import { ContinueWatching } from "@/components/anime/ContinueWatching";
 import { LocalContinueWatching } from "@/components/anime/LocalContinueWatching";
 import { PlaylistSection } from "@/components/anime/PlaylistSection";
+import { UpcomingAnimeSection } from "@/components/anime/UpcomingAnimeSection";
 import { HeroSkeleton, CardSkeleton } from "@/components/ui/skeleton-custom";
 import { Heart, Sparkles } from "lucide-react";
 
@@ -70,6 +71,9 @@ const Index = () => {
 
             {/* Trending Grid */}
             <TrendingGrid animes={data.trendingAnimes} />
+
+            {/* Upcoming Anime - From Jikan API */}
+            <UpcomingAnimeSection />
 
             {/* Top 10 Anime */}
             <TopAnimeSection 

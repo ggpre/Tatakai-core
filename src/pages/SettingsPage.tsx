@@ -15,8 +15,51 @@ import { useUpdateProfilePrivacy } from '@/hooks/useProfileFeatures';
 import { getMALAuthUrl, getAniListAuthUrl, disconnectMAL, disconnectAniList } from '@/lib/externalIntegrations';
 import { toast } from 'sonner';
 import { 
-  ArrowLeft, Palette, Film, Monitor, Info, Link2, Eye, EyeOff, Globe, CheckCircle, ExternalLink, Shield
+  ArrowLeft, Palette, Film, Monitor, Info, Link2, Eye, EyeOff, Globe, CheckCircle, ExternalLink, Shield, History
 } from 'lucide-react';
+
+// Changelog entries - most recent first
+const CHANGELOG = [
+  {
+    version: '2.0.0',
+    date: '2026-01-08',
+    changes: [
+      'Added upcoming anime section from Jikan API',
+      'Added changelog section in settings',
+      'Fixed Vercel routing for direct URL access',
+      'Enhanced privacy settings for watchlist and history',
+    ],
+  },
+  {
+    version: '1.9.0',
+    date: '2026-01-03',
+    changes: [
+      'Added playlists feature',
+      'Added tier lists with sharing',
+      'Added social links to profiles',
+      'Public profile support with privacy controls',
+    ],
+  },
+  {
+    version: '1.8.0',
+    date: '2026-01-02',
+    changes: [
+      'Added admin dashboard',
+      'Enhanced video player settings',
+      'Added MyAnimeList and AniList integrations',
+    ],
+  },
+  {
+    version: '1.7.0',
+    date: '2025-12-31',
+    changes: [
+      'Initial release with core features',
+      'Multi-theme support',
+      'Watch history tracking',
+      'Watchlist management',
+    ],
+  },
+];
 
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -123,6 +166,10 @@ export default function SettingsPage() {
             <TabsTrigger value="about" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <Info className="w-4 h-4" />
               About
+            </TabsTrigger>
+            <TabsTrigger value="changelog" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <History className="w-4 h-4" />
+              Changelog
             </TabsTrigger>
           </TabsList>
 
@@ -367,6 +414,43 @@ export default function SettingsPage() {
                     <p className="text-sm text-muted-foreground">Anime</p>
                   </div>
                 </div>
+              </div>
+            </GlassPanel>
+          </TabsContent>
+
+          {/* Changelog Tab */}
+          <TabsContent value="changelog">
+            <GlassPanel className="p-6">
+              <h2 className="font-display text-xl font-semibold mb-6 flex items-center gap-2">
+                <History className="w-5 h-5 text-primary" />
+                Changelog
+              </h2>
+              <div className="space-y-6">
+                {CHANGELOG.map((release, index) => (
+                  <div key={release.version} className={`p-4 rounded-xl ${index === 0 ? 'bg-primary/10 border border-primary/20' : 'bg-muted/30'}`}>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-1 rounded-md text-xs font-bold ${index === 0 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                          v{release.version}
+                        </span>
+                        {index === 0 && (
+                          <span className="px-2 py-1 rounded-md bg-green-500/20 text-green-500 text-xs font-bold">
+                            Latest
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-sm text-muted-foreground">{release.date}</span>
+                    </div>
+                    <ul className="space-y-2">
+                      {release.changes.map((change, i) => (
+                        <li key={i} className="flex items-start gap-2 text-sm">
+                          <span className="text-primary mt-1">•</span>
+                          <span className="text-foreground/80">{change}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
               </div>
             </GlassPanel>
           </TabsContent>

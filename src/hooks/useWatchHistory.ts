@@ -25,6 +25,7 @@ export function useWatchHistory(limit?: number) {
       let query = supabase
         .from('watch_history')
         .select('*')
+        .eq('user_id', user!.id)
         .order('watched_at', { ascending: false });
       
       if (limit) {
@@ -49,6 +50,7 @@ export function useContinueWatching() {
       const { data, error } = await supabase
         .from('watch_history')
         .select('*')
+        .eq('user_id', user!.id)
         .eq('completed', false)
         .order('watched_at', { ascending: false })
         .limit(10);
