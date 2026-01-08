@@ -43,7 +43,9 @@ function UpcomingAnimeCard({ anime }: { anime: JikanAnime }) {
             {anime.aired.string && (
               <span className="flex items-center gap-1">
                 <Calendar className="w-3 h-3" />
-                {anime.aired.string.split(' to ')[0]}
+                {anime.aired.string.includes(' to ') 
+                  ? anime.aired.string.split(' to ')[0] 
+                  : anime.aired.string}
               </span>
             )}
             {anime.studios.length > 0 && (

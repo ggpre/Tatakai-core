@@ -66,7 +66,7 @@ async function fetchUpcomingAnime(page: number = 1): Promise<JikanResponse> {
   );
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch upcoming anime: ${response.status}`);
+    throw new Error(`Failed to fetch upcoming anime: ${response.status} ${response.statusText}`);
   }
 
   return response.json();
