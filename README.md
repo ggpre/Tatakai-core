@@ -1,10 +1,24 @@
 # 🎬 Tatakai
 
 A modern, feature-rich anime streaming platform built with React, TypeScript, and Supabase.
+**Now available as a mobile app built with Flutter!** 📱
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.5-blue)
 ![React](https://img.shields.io/badge/React-18-blue)
+![Flutter](https://img.shields.io/badge/Flutter-3.0+-blue)
+
+## 📱 Mobile App
+
+**NEW:** Tatakai is now available as a native mobile app! Check out [`/tatakai_mobile`](./tatakai_mobile) for:
+- 🎨 Pixel-perfect Flutter implementation
+- 📥 Download episodes for offline viewing
+- 🔄 Real-time sync with web app
+- 🔔 Push notifications for new episodes
+- 🎨 15+ stunning themes
+- ⚡ Native performance on iOS & Android
+
+👉 [Mobile App Documentation](./tatakai_mobile/README.md) | [Quick Start Guide](./tatakai_mobile/QUICK_START.md)
 
 ## ✨ Features
 
