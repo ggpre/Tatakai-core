@@ -14,10 +14,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { AnalyticsDashboard } from '@/components/admin/AnalyticsDashboard';
 import { VideoServerManager } from '@/components/admin/VideoServerManager';
+import { IncidentManager } from '@/components/admin/IncidentManager';
+import { PopupBuilder } from '@/components/admin/PopupBuilder';
+import { ChangelogManager } from '@/components/admin/ChangelogManager';
 import { 
   ArrowLeft, Shield, ShieldCheck, ShieldOff, Users, MessageSquare, Star, Search,
   Trash2, Ban, CheckCircle, AlertTriangle, BarChart3, Send,
-  Settings, Power, Unlock, BellRing, Server
+  Settings, Power, Unlock, BellRing, Server, AlertCircle, Megaphone, History
 } from 'lucide-react';
 
 export default function AdminPage() {
@@ -376,6 +379,18 @@ export default function AdminPage() {
               <Send className="w-4 h-4" />
               Messages
             </TabsTrigger>
+            <TabsTrigger value="incidents" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <AlertCircle className="w-4 h-4" />
+              Incidents
+            </TabsTrigger>
+            <TabsTrigger value="popups" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <Megaphone className="w-4 h-4" />
+              Popups
+            </TabsTrigger>
+            <TabsTrigger value="changelog" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <History className="w-4 h-4" />
+              Changelog
+            </TabsTrigger>
             <TabsTrigger value="servers" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <Server className="w-4 h-4" />
               Video Servers
@@ -678,6 +693,27 @@ export default function AdminPage() {
           <TabsContent value="servers">
             <GlassPanel className="p-6">
               <VideoServerManager />
+            </GlassPanel>
+          </TabsContent>
+
+          {/* Incidents Tab */}
+          <TabsContent value="incidents">
+            <GlassPanel className="p-6">
+              <IncidentManager />
+            </GlassPanel>
+          </TabsContent>
+
+          {/* Popups Tab */}
+          <TabsContent value="popups">
+            <GlassPanel className="p-6">
+              <PopupBuilder />
+            </GlassPanel>
+          </TabsContent>
+
+          {/* Changelog Tab */}
+          <TabsContent value="changelog">
+            <GlassPanel className="p-6">
+              <ChangelogManager />
             </GlassPanel>
           </TabsContent>
 

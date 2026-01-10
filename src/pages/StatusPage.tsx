@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
+import { useStatusIncidents } from '@/hooks/useAdminFeatures';
+import { formatDistanceToNow } from 'date-fns';
 
 interface ServiceStatus {
   name: string;
@@ -23,6 +25,7 @@ interface ServiceStatus {
 
 export default function StatusPage() {
   const navigate = useNavigate();
+  const { data: incidents = [], isLoading: loadingIncidents } = useStatusIncidents(false);
   const [services, setServices] = useState<ServiceStatus[]>([
     { name: 'Tatakai Website', status: 'checking', icon: <Globe className="w-5 h-5" />, description: 'Main website', url: window.location.origin },
     { name: 'Supabase API', status: 'checking', icon: <Database className="w-5 h-5" />, description: 'Database & Auth' },
@@ -34,6 +37,19 @@ export default function StatusPage() {
   ]);
   const [lastChecked, setLastChecked] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const SEVERITY_COLORS = {
+    minor: 'bg-yellow-500/20 text-yellow-500 border-yellow-500/50',
+    major: 'bg-orange-500/20 text-orange-500 border-orange-500/50',
+    critical: 'bg-red-500/20 text-red-500 border-red-500/50',
+  };
+
+  const STATUS_COLORS = {
+    investigating: 'bg-red-500/20 text-red-500',
+    identified: 'bg-orange-500/20 text-orange-500',
+    monitoring: 'bg-blue-500/20 text-blue-500',
+    resolved: 'bg-green-500/20 text-green-500',
+  };
 
   const checkService = async (name: string, checkFn: () => Promise<{ status: ServiceStatus['status']; latency: number }>): Promise<ServiceStatus['status']> => {
     try {
@@ -287,10 +303,74 @@ export default function StatusPage() {
         <div className="mt-8">
           <h2 className="font-display text-xl font-semibold mb-4">Recent Incidents</h2>
           <GlassPanel className="p-6">
-            <div className="text-center py-8 text-muted-foreground">
-              <CheckCircle className="w-12 h-12 mx-auto mb-4 text-green-500" />
-              <p>No incidents reported in the last 30 days</p>
-            </div>
+            {loadingIncidents ? (
+              <div className="text-center py-8 text-muted-foreground">Loading...</div>
+            ) : incidents.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <CheckCircle className="w-12 h-12 mx-auto mb-4 text-green-500" />
+                <p>No incidents reported in the last 30 days</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {incidents.map((incident) => (
+                  <div
+                    key={incident.id}
+                    className={`p-4 rounded-xl border ${
+                      incident.is_active ? 'border-orange-500/50 bg-orange-500/5' : 'border-muted bg-muted/10'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-bold border ${SEVERITY_COLORS[incident.severity as keyof typeof SEVERITY_COLORS]}`}>
+                            {incident.severity.toUpperCase()}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[incident.status as keyof typeof STATUS_COLORS]}`}>
+                            {incident.status}
+                          </span>
+                          {incident.is_active && (
+                            <span className="px-2 py-0.5 rounded-full bg-red-500/20 text-red-500 text-xs font-bold animate-pulse">
+                              ONGOING
+                            </span>
+                          )}
+                        </div>
+                        <h3 className="font-semibold">{incident.title}</h3>
+                        <p className="text-sm text-muted-foreground mt-1">{incident.description}</p>
+                        
+                        {incident.affected_services && incident.affected_services.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {incident.affected_services.map((service: string) => (
+                              <span key={service} className="px-2 py-0.5 rounded-full bg-muted/50 text-xs">
+                                {service}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Incident Updates */}
+                        {incident.updates && incident.updates.length > 0 && (
+                          <div className="mt-4 space-y-2">
+                            {incident.updates.slice(0, 3).map((update) => (
+                              <div key={update.id} className="pl-4 border-l-2 border-muted">
+                                <p className="text-sm">{update.message}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {formatDistanceToNow(new Date(update.created_at), { addSuffix: true })}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        
+                        <p className="text-xs text-muted-foreground mt-3">
+                          {incident.is_active ? 'Started' : 'Resolved'}{' '}
+                          {formatDistanceToNow(new Date(incident.is_active ? incident.created_at : incident.resolved_at!), { addSuffix: true })}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </GlassPanel>
         </div>
       </main>

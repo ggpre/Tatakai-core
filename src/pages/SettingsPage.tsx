@@ -12,14 +12,15 @@ import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
 import { useUpdateProfilePrivacy } from '@/hooks/useProfileFeatures';
+import { useChangelog } from '@/hooks/useAdminFeatures';
 import { getMALAuthUrl, getAniListAuthUrl, disconnectMAL, disconnectAniList } from '@/lib/externalIntegrations';
 import { toast } from 'sonner';
 import { 
   ArrowLeft, Palette, Film, Monitor, Info, Link2, Eye, EyeOff, Globe, CheckCircle, ExternalLink, Shield, History
 } from 'lucide-react';
 
-// Changelog entries - most recent first
-const CHANGELOG = [
+// Fallback changelog entries if database is empty
+const FALLBACK_CHANGELOG = [
   {
     version: '2.0.0',
     date: '2026-01-08',
@@ -66,7 +67,13 @@ export default function SettingsPage() {
   const { user, profile, refreshProfile } = useAuth();
   const { themes } = useTheme();
   const updatePrivacy = useUpdateProfilePrivacy();
+  const { data: dbChangelog = [], isLoading: loadingChangelog } = useChangelog();
   const [isPublic, setIsPublic] = useState(true);
+  
+  // Use database changelog if available, otherwise fallback
+  const CHANGELOG = dbChangelog.length > 0 
+    ? dbChangelog.map(c => ({ version: c.version, date: c.release_date, changes: c.changes }))
+    : FALLBACK_CHANGELOG;
 
   useEffect(() => {
     if (profile) {
