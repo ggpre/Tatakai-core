@@ -66,7 +66,7 @@ class TatakaiApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Get current theme from preferences (will be implemented with provider)
-    final currentTheme = 'default_dark'; // TODO: Get from provider
+    final currentTheme = 'wakuwaku_dark'; // Using the new WakuWaku theme
     
     return MaterialApp.router(
       title: Config.appName,

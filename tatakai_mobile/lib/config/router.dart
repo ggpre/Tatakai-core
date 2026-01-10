@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tatakai_mobile/screens/home/home_screen.dart';
 import 'package:tatakai_mobile/screens/anime/anime_detail_screen.dart';
+import 'package:tatakai_mobile/screens/anime/episodes_screen.dart';
 import 'package:tatakai_mobile/screens/watch/watch_screen.dart';
 import 'package:tatakai_mobile/screens/search/search_screen.dart';
 import 'package:tatakai_mobile/screens/genre/genre_screen.dart';
@@ -75,6 +76,14 @@ class AppRouter {
         builder: (context, state) {
           final id = state.pathParameters['id']!;
           return AnimeDetailScreen(animeId: id);
+        },
+      ),
+      GoRoute(
+        path: '/anime/:id/episodes',
+        name: 'anime_episodes',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return EpisodesScreen(animeId: id);
         },
       ),
       GoRoute(
