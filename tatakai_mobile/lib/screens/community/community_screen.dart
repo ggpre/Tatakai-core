@@ -18,7 +18,7 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -65,7 +65,8 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen>
           unselectedLabelColor: Colors.white.withOpacity(0.5),
           tabs: const [
             Tab(text: 'Feed'),
-            Tab(text: 'Discussions'),
+            Tab(text: 'Forum'),
+            Tab(text: 'Tier Lists'),
             Tab(text: 'Reviews'),
           ],
         ),
@@ -74,7 +75,8 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen>
         controller: _tabController,
         children: [
           _buildFeedTab(),
-          _buildDiscussionsTab(),
+          _buildForumTab(),
+          _buildTierListsTab(),
           _buildReviewsTab(),
         ],
       ),
@@ -279,7 +281,130 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen>
     );
   }
   
-  Widget _buildDiscussionsTab() {
+  Widget _buildForumTab() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(AppThemes.spaceLg),
+      itemCount: 10,
+      itemBuilder: (context, index) {
+        return Container(
+          margin: const EdgeInsets.only(bottom: AppThemes.spaceMd),
+          decoration: BoxDecoration(
+            color: AppThemes.darkSurface,
+            borderRadius: BorderRadius.circular(AppThemes.radiusMedium),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ListTile(
+                contentPadding: const EdgeInsets.all(AppThemes.spaceMd),
+                title: Row(
+                  children: [
+                    if (index == 0)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppThemes.spaceSm,
+                          vertical: 2,
+                        ),
+                        margin: const EdgeInsets.only(right: AppThemes.spaceSm),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'Pinned',
+                          style: TextStyle(
+                            color: Colors.green,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    Expanded(
+                      child: Text(
+                        'Forum Post Title ${index + 1}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: AppThemes.spaceSm),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'This is a preview of the forum post content. It shows the first few lines...',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.7),
+                          fontSize: 13,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: AppThemes.spaceSm),
+                      Row(
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.arrow_upward,
+                                size: 14,
+                                color: Colors.white.withOpacity(0.5),
+                              ),
+                              const SizedBox(width: 2),
+                              Text(
+                                '${42 + index * 5}',
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.5),
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(width: AppThemes.spaceMd),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.chat_bubble_outline,
+                                size: 14,
+                                color: Colors.white.withOpacity(0.5),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${15 + index} comments',
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.5),
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const Spacer(),
+                          Text(
+                            '${index + 1}h ago',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.4),
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+  
+  Widget _buildTierListsTab() {
     return ListView.builder(
       padding: const EdgeInsets.all(AppThemes.spaceLg),
       itemCount: 10,
@@ -292,8 +417,22 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen>
           ),
           child: ListTile(
             contentPadding: const EdgeInsets.all(AppThemes.spaceMd),
+            leading: Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppThemes.accentPink.withOpacity(0.3),
+                    Colors.purple.withOpacity(0.3),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(AppThemes.radiusSmall),
+              ),
+              child: const Icon(Icons.view_list, color: Colors.white),
+            ),
             title: Text(
-              'Discussion Topic ${index + 1}',
+              'Tier List ${index + 1}',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 15,
@@ -305,27 +444,21 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen>
               child: Row(
                 children: [
                   Icon(
-                    Icons.chat_bubble_outline,
+                    Icons.favorite,
                     size: 14,
-                    color: Colors.white.withOpacity(0.5),
+                    color: Colors.red.withOpacity(0.7),
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    '${15 + index} replies',
+                    '${120 + index * 10} likes',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.5),
                       fontSize: 12,
                     ),
                   ),
                   const SizedBox(width: AppThemes.spaceMd),
-                  Icon(
-                    Icons.access_time,
-                    size: 14,
-                    color: Colors.white.withOpacity(0.5),
-                  ),
-                  const SizedBox(width: 4),
                   Text(
-                    '${index + 1}h ago',
+                    'by User ${index + 1}',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.5),
                       fontSize: 12,

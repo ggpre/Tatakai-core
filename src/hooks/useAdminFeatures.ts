@@ -192,7 +192,7 @@ export function useActivePopups() {
     queryFn: async () => {
       const now = new Date().toISOString();
       
-      let query = supabase
+      const query = supabase
         .from('popups')
         .select('*')
         .eq('is_active', true)

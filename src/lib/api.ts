@@ -361,6 +361,19 @@ export async function fetchGenreAnimes(
   return apiGet(`/genre/${genre}?page=${page}`);
 }
 
+// Fetch next episode schedule for an anime
+export interface NextEpisodeSchedule {
+  airingISOTimestamp: string | null;
+  airingTimestamp: number | null;
+  secondsUntilAiring: number | null;
+}
+
+export async function fetchNextEpisodeSchedule(
+  animeId: string
+): Promise<NextEpisodeSchedule> {
+  return apiGet(`/anime/${animeId}/next-episode-schedule`);
+}
+
 // Fetch sources from WatchAnimeWorld
 export async function fetchWatchanimeworldSources(
   episodeUrl: string

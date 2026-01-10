@@ -111,7 +111,7 @@ export function useForumPosts(options?: {
       const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
 
       // Fetch user votes if logged in
-      let voteMap = new Map<string, 1 | -1>();
+      const voteMap = new Map<string, 1 | -1>();
       if (user && data.length > 0) {
         const { data: votes } = await supabase
           .from('forum_votes')
@@ -207,7 +207,7 @@ export function useForumComments(postId: string) {
       const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
 
       // Fetch user votes if logged in
-      let voteMap = new Map<string, 1 | -1>();
+      const voteMap = new Map<string, 1 | -1>();
       if (user && data.length > 0) {
         const { data: votes } = await supabase
           .from('forum_votes')

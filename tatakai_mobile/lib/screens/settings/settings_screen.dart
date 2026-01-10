@@ -16,6 +16,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _autoPlay = true;
   bool _skipIntro = true;
   String _videoQuality = 'Auto';
+  String _maxDownloadStorage = '5 GB';
+  bool _syncWatchHistory = true;
+  bool _pushNotifications = true;
+  bool _messageNotifications = true;
   
   @override
   void initState() {
@@ -107,7 +111,44 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             _buildMenuItem(
               'Download Location',
               'Internal Storage',
-              onTap: () {},
+              onTap: () => _showDownloadLocationDialog(),
+            ),
+            _buildDropdownItem(
+              'Max Download Storage',
+              _maxDownloadStorage,
+              ['1 GB', '2 GB', '5 GB', '10 GB', 'Unlimited'],
+              (value) {
+                setState(() => _maxDownloadStorage = value!);
+              },
+            ),
+            
+            const SizedBox(height: AppThemes.spaceXl),
+            
+            // Sync & Notifications section
+            _buildSectionTitle('Sync & Notifications'),
+            _buildSwitchItem(
+              'Sync Watch History',
+              'Sync your watch progress across devices',
+              _syncWatchHistory,
+              (value) {
+                setState(() => _syncWatchHistory = value);
+              },
+            ),
+            _buildSwitchItem(
+              'Push Notifications',
+              'Get notified about new episodes',
+              _pushNotifications,
+              (value) {
+                setState(() => _pushNotifications = value);
+              },
+            ),
+            _buildSwitchItem(
+              'Message Notifications',
+              'Get notified about new messages',
+              _messageNotifications,
+              (value) {
+                setState(() => _messageNotifications = value);
+              },
             ),
             
             const SizedBox(height: AppThemes.spaceXl),
@@ -129,6 +170,62 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ],
         ),
       ),
+    );
+  }
+  
+  void _showDownloadLocationDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: AppThemes.darkSurface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppThemes.radiusMedium),
+          ),
+          title: const Text(
+            'Download Location',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: const Text(
+                  'Internal Storage',
+                  style: TextStyle(color: Colors.white),
+                ),
+                leading: Radio<String>(
+                  value: 'internal',
+                  groupValue: 'internal',
+                  onChanged: (value) {},
+                  activeColor: AppThemes.accentPink,
+                ),
+                onTap: () => Navigator.pop(context),
+              ),
+              ListTile(
+                title: Text(
+                  'SD Card (Not available)',
+                  style: TextStyle(color: Colors.white.withOpacity(0.5)),
+                ),
+                leading: Radio<String>(
+                  value: 'sd',
+                  groupValue: 'internal',
+                  onChanged: null,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                'Close',
+                style: TextStyle(color: AppThemes.accentPink),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
   

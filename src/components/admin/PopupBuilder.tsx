@@ -140,7 +140,7 @@ export function PopupBuilder() {
         await updatePopup.mutateAsync({ id: editingPopup.id, updates: data });
         toast.success('Popup updated');
       } else {
-        await createPopup.mutateAsync(data as any);
+        await createPopup.mutateAsync(data as Omit<Popup, 'id' | 'created_by' | 'created_at' | 'updated_at'>);
         toast.success('Popup created');
       }
       setShowForm(false);
