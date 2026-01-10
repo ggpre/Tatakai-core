@@ -332,6 +332,9 @@ export function useDeletePopup() {
   });
 }
 
+// PostgreSQL error codes
+const UNIQUE_VIOLATION = '23505';
+
 export function useDismissPopup() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -346,7 +349,7 @@ export function useDismissPopup() {
           session_id: user ? null : sessionId,
         });
 
-      if (error && error.code !== '23505') throw error; // Ignore unique violation
+      if (error && error.code !== UNIQUE_VIOLATION) throw error; // Ignore unique violation
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['active_popups'] });

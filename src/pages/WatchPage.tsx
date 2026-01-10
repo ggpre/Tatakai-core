@@ -17,6 +17,7 @@ import { updateLocalContinueWatching, getLocalContinueWatching } from "@/lib/loc
 import { useAuth } from "@/contexts/AuthContext";
 import { useUpdateWatchHistory } from '@/hooks/useWatchHistory';
 import { useViewTracker, useAnimeViewCount, formatViewCount } from '@/hooks/useViews';
+import { useWatchTracking } from '@/hooks/useAnalytics';
 import { getProxiedVideoUrl } from "@/lib/api";
 import {
   ArrowLeft,
@@ -96,6 +97,15 @@ export default function WatchPage() {
   // View tracking
   const { data: viewCount } = useAnimeViewCount(animeId);
   useViewTracker(animeId, decodedEpisodeId);
+
+  // Watch time analytics tracking
+  const watchMetadata = useMemo(() => ({
+    animeName: animeData?.anime?.info?.name,
+    animePoster: animeData?.anime?.info?.poster,
+    genres: animeData?.anime?.moreInfo?.genres,
+  }), [animeData]);
+  
+  useWatchTracking(animeId, decodedEpisodeId, watchMetadata);
 
   const availableServers = useMemo(() => {
     // Filter out hd-1 server completely

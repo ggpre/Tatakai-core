@@ -27,9 +27,12 @@ export default function PublicProfilePage() {
   const { data: watchHistory = [], isLoading: loadingHistory } = usePublicWatchHistory(profile?.id, profile?.is_public ?? false);
   const { data: tierLists = [], isLoading: loadingTierLists } = useUserTierLists(profile?.id);
 
-  // Calculate total watch time (rough estimate: 24 min per episode)
+  // Use actual watch time from profile if available, otherwise estimate
   const totalEpisodesWatched = watchHistory.length;
-  const estimatedWatchTimeHours = Math.round((totalEpisodesWatched * 24) / 60);
+  const actualWatchTimeSeconds = profile?.total_watch_time_seconds || 0;
+  const watchTimeHours = actualWatchTimeSeconds > 0 
+    ? Math.round(actualWatchTimeSeconds / 3600)  // Convert seconds to hours
+    : Math.round((totalEpisodesWatched * 24) / 60);  // Fallback estimate: 24 min per episode
 
   if (loadingProfile) {
     return (
@@ -162,7 +165,7 @@ export default function PublicProfilePage() {
               <div className="text-center p-3 rounded-xl bg-muted/30">
                 <div className="flex items-center justify-center gap-2 mb-1">
                   <Clock className="w-4 h-4 text-primary" />
-                  <span className="text-2xl font-bold">{estimatedWatchTimeHours}h</span>
+                  <span className="text-2xl font-bold">{watchTimeHours}h</span>
                 </div>
                 <p className="text-sm text-muted-foreground">Watch Time</p>
               </div>
