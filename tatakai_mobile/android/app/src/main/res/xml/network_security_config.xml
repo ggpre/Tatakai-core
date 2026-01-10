@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Allow cleartext traffic for all domains (development/streaming compatibility) -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    
+    <!-- Domain-specific configuration for known APIs -->
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- HiAnime API domains -->
+        <domain includeSubdomains="true">api.consumet.org</domain>
+        <domain includeSubdomains="true">consumet.org</domain>
+        
+        <!-- Video streaming domains -->
+        <domain includeSubdomains="true">megacloud.tv</domain>
+        <domain includeSubdomains="true">rapid-cloud.co</domain>
+        <domain includeSubdomains="true">watchsb.com</domain>
+        <domain includeSubdomains="true">streamsb.net</domain>
+        
+        <!-- Image CDN domains -->
+        <domain includeSubdomains="true">img.zorores.com</domain>
+        <domain includeSubdomains="true">cdn.myanimelist.net</domain>
+        
+        <!-- Supabase domain -->
+        <domain includeSubdomains="true">supabase.co</domain>
+        
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+</network-security-config>

@@ -13,6 +13,7 @@ import { ContinueWatching } from "@/components/anime/ContinueWatching";
 import { LocalContinueWatching } from "@/components/anime/LocalContinueWatching";
 import { PlaylistSection } from "@/components/anime/PlaylistSection";
 import { UpcomingAnimeSection } from "@/components/anime/UpcomingAnimeSection";
+import { InfiniteHomeSections } from "@/components/anime/InfiniteHomeSections";
 import { HeroSkeleton, CardSkeleton } from "@/components/ui/skeleton-custom";
 import { Heart, Sparkles } from "lucide-react";
 
@@ -98,6 +99,9 @@ const Index = () => {
               title="Most Favorite"
               icon={<Sparkles className="w-5 h-5 text-amber" />}
             />
+
+            {/* Infinite Scrolling Genre Sections */}
+            <InfiniteHomeSections />
           </>
         ) : null}
       </main>
