@@ -6,10 +6,10 @@ class AppThemes {
   
   static final Map<String, ThemeData> themes = {
     'default_dark': _buildTheme(
-      primary: const Color(0xFF7C3AED),
-      secondary: const Color(0xFFA855F7),
-      background: const Color(0xFF0F0F0F),
-      surface: const Color(0xFF1A1A1A),
+      primary: const Color(0xFFAB47BC), // Purple
+      secondary: const Color(0xFFEC407A), // Pink
+      background: const Color(0xFF0A0A0F), // Very dark blue-black
+      surface: const Color(0xFF1A1525), // Dark purple-tinted
       isDark: true,
     ),
     'default_light': _buildTheme(
