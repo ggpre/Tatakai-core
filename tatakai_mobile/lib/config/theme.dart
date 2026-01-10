@@ -2,21 +2,50 @@ import 'package:flutter/material.dart';
 
 class AppThemes {
   // Theme enum
-  static const String defaultTheme = 'default_dark';
+  static const String defaultTheme = 'wakuwaku_dark';
+  
+  // WakuWaku Design System Colors
+  static const Color accentPink = Color(0xFFDB2D69);
+  static const Color accentPinkLight = Color(0xFFFDB372);
+  static const Color darkBackground = Color(0xFF1B1919);
+  static const Color darkSurface = Color(0xFF2A2828);
+  static const Color lightBackground = Color(0xFFEFECEC);
+  static const Color lightSurface = Color(0xFFFFFFFF);
+  static const Color ratingGreen = Color(0xFF4CAF50);
+  static const Color textSecondaryDark = Color(0xFFB0B0B0);
+  static const Color textSecondaryLight = Color(0xFF666666);
+  
+  // Spacing System
+  static const double spaceXs = 4.0;
+  static const double spaceSm = 8.0;
+  static const double spaceMd = 12.0;
+  static const double spaceLg = 16.0;
+  static const double spaceXl = 24.0;
+  static const double spaceXxl = 32.0;
+  
+  // Border Radius
+  static const double radiusSmall = 8.0;
+  static const double radiusMedium = 12.0;
+  static const double radiusLarge = 16.0;
+  static const double radiusXLarge = 20.0;
+  static const double radiusXXLarge = 24.0;
+  static const double radiusPill = 28.0;
   
   static final Map<String, ThemeData> themes = {
+    'wakuwaku_dark': _buildWakuWakuTheme(isDark: true),
+    'wakuwaku_light': _buildWakuWakuTheme(isDark: false),
     'default_dark': _buildTheme(
-      primary: const Color(0xFF7C3AED),
-      secondary: const Color(0xFFA855F7),
-      background: const Color(0xFF0F0F0F),
-      surface: const Color(0xFF1A1A1A),
+      primary: accentPink,
+      secondary: accentPinkLight,
+      background: darkBackground,
+      surface: darkSurface,
       isDark: true,
     ),
     'default_light': _buildTheme(
-      primary: const Color(0xFF7C3AED),
-      secondary: const Color(0xFFA855F7),
-      background: const Color(0xFFFAFAFA),
-      surface: const Color(0xFFFFFFFF),
+      primary: accentPink,
+      secondary: accentPinkLight,
+      background: lightBackground,
+      surface: lightSurface,
       isDark: false,
     ),
     'cyberpunk': _buildTheme(
@@ -118,6 +147,213 @@ class AppThemes {
       isDark: true,
     ),
   };
+  
+  static ThemeData _buildWakuWakuTheme({required bool isDark}) {
+    final background = isDark ? darkBackground : lightBackground;
+    final surface = isDark ? darkSurface : lightSurface;
+    final textPrimary = isDark ? Colors.white : const Color(0xFF1B1919);
+    final textSecondary = isDark ? textSecondaryDark : textSecondaryLight;
+    
+    final colorScheme = ColorScheme(
+      brightness: isDark ? Brightness.dark : Brightness.light,
+      primary: accentPink,
+      onPrimary: Colors.white,
+      secondary: accentPinkLight,
+      onSecondary: Colors.white,
+      error: const Color(0xFFEF4444),
+      onError: Colors.white,
+      surface: surface,
+      onSurface: textPrimary,
+      background: background,
+      onBackground: textPrimary,
+    );
+    
+    return ThemeData(
+      useMaterial3: true,
+      fontFamily: 'Outfit',
+      colorScheme: colorScheme,
+      scaffoldBackgroundColor: background,
+      appBarTheme: AppBarTheme(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        iconTheme: IconThemeData(color: textPrimary),
+        titleTextStyle: TextStyle(
+          fontFamily: 'Outfit',
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: textPrimary,
+        ),
+      ),
+      cardTheme: CardTheme(
+        color: surface,
+        elevation: 4,
+        shadowColor: Colors.black.withOpacity(0.2),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusLarge),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: surface,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(radiusMedium),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(radiusMedium),
+          borderSide: const BorderSide(color: accentPink, width: 2),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: spaceLg, vertical: spaceMd),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: accentPink,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: spaceXl, vertical: spaceMd),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(radiusPill),
+          ),
+          elevation: 4,
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: accentPink,
+          side: const BorderSide(color: accentPink, width: 2),
+          padding: const EdgeInsets.symmetric(horizontal: spaceXl, vertical: spaceMd),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(radiusPill),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: accentPink,
+        ),
+      ),
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: isDark ? darkSurface.withOpacity(0.95) : lightSurface,
+        selectedItemColor: accentPink,
+        unselectedItemColor: textSecondary,
+        type: BottomNavigationBarType.fixed,
+        elevation: 8,
+        selectedLabelStyle: const TextStyle(
+          fontFamily: 'Outfit',
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
+        unselectedLabelStyle: const TextStyle(
+          fontFamily: 'Outfit',
+          fontSize: 12,
+          fontWeight: FontWeight.w400,
+        ),
+      ),
+      tabBarTheme: TabBarTheme(
+        labelColor: Colors.white,
+        unselectedLabelColor: textSecondary,
+        indicatorColor: accentPink,
+        labelStyle: const TextStyle(
+          fontFamily: 'Outfit',
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+        unselectedLabelStyle: const TextStyle(
+          fontFamily: 'Outfit',
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+        ),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: surface,
+        selectedColor: accentPink,
+        labelStyle: TextStyle(
+          fontFamily: 'Outfit',
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: textPrimary,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: spaceMd, vertical: spaceXs),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusLarge),
+        ),
+      ),
+      textTheme: TextTheme(
+        displayLarge: TextStyle(
+          fontFamily: 'Outfit',
+          fontSize: 32,
+          fontWeight: FontWeight.w700,
+          color: textPrimary,
+        ),
+        displayMedium: TextStyle(
+          fontFamily: 'Outfit',
+          fontSize: 28,
+          fontWeight: FontWeight.w700,
+          color: textPrimary,
+        ),
+        displaySmall: TextStyle(
+          fontFamily: 'Outfit',
+          fontSize: 24,
+          fontWeight: FontWeight.w700,
+          color: textPrimary,
+        ),
+        headlineMedium: TextStyle(
+          fontFamily: 'Outfit',
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: textPrimary,
+        ),
+        headlineSmall: TextStyle(
+          fontFamily: 'Outfit',
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          color: textPrimary,
+        ),
+        titleLarge: TextStyle(
+          fontFamily: 'Outfit',
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          color: textPrimary,
+        ),
+        titleMedium: TextStyle(
+          fontFamily: 'Outfit',
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          color: textPrimary,
+        ),
+        bodyLarge: TextStyle(
+          fontFamily: 'Outfit',
+          fontSize: 16,
+          fontWeight: FontWeight.w400,
+          color: textPrimary,
+        ),
+        bodyMedium: TextStyle(
+          fontFamily: 'Outfit',
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          color: textPrimary.withOpacity(0.87),
+        ),
+        bodySmall: TextStyle(
+          fontFamily: 'Outfit',
+          fontSize: 12,
+          fontWeight: FontWeight.w400,
+          color: textSecondary,
+        ),
+        labelLarge: TextStyle(
+          fontFamily: 'Outfit',
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          color: textPrimary,
+        ),
+        labelMedium: TextStyle(
+          fontFamily: 'Outfit',
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: textSecondary,
+        ),
+      ),
+    );
+  }
   
   static ThemeData _buildTheme({
     required Color primary,
