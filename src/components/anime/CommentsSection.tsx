@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useComments, useReplies, useAddComment, useDeleteComment, useLikeComment } from '@/hooks/useComments';
+import { useComments, useReplies, useAddComment, useDeleteComment, useLikeComment, usePinComment } from '@/hooks/useComments';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MessageSquare, Heart, Reply, Trash2, ChevronDown, ChevronUp, AlertTriangle, Loader2, Ban, MoreVertical } from 'lucide-react';
+import { MessageSquare, Heart, Reply, Trash2, ChevronDown, ChevronUp, AlertTriangle, Loader2, Ban, MoreVertical, Pin } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useNavigate } from 'react-router-dom';
@@ -22,6 +22,7 @@ interface CommentItemProps {
     id: string;
     content: string;
     is_spoiler: boolean | null;
+    is_pinned: boolean | null;
     likes_count: number | null;
     created_at: string;
     user_id: string;
@@ -51,6 +52,7 @@ function CommentItem({ comment, animeId, episodeId, isReply = false }: CommentIt
   const addComment = useAddComment();
   const deleteComment = useDeleteComment();
   const likeComment = useLikeComment();
+  const pinComment = usePinComment();
 
   const handleReply = async () => {
     if (!replyContent.trim()) return;
@@ -91,7 +93,7 @@ function CommentItem({ comment, animeId, episodeId, isReply = false }: CommentIt
   };
 
   const canDelete = user?.id === comment.user_id || isModerator;
-  const canModerate = isAdmin && user?.id !== comment.user_id;
+  const canModerate = isAdmin; // Admins can always moderate
 
   return (
     <div className={`${isReply ? 'ml-8 md:ml-12' : ''}`}>
@@ -115,6 +117,12 @@ function CommentItem({ comment, animeId, episodeId, isReply = false }: CommentIt
             <span className="text-xs text-muted-foreground">
               {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
             </span>
+            {comment.is_pinned && (
+              <span className="px-2 py-0.5 rounded text-xs bg-primary/20 text-primary flex items-center gap-1">
+                <Pin className="w-3 h-3" />
+                Pinned
+              </span>
+            )}
             {comment.is_spoiler && (
               <span className="px-2 py-0.5 rounded text-xs bg-destructive/20 text-destructive flex items-center gap-1">
                 <AlertTriangle className="w-3 h-3" />
@@ -166,6 +174,20 @@ function CommentItem({ comment, animeId, episodeId, isReply = false }: CommentIt
               </button>
             )}
 
+            {/* Direct Pin Button for moderators */}
+            {canModerate && (
+              <button
+                onClick={() => pinComment.mutate({ commentId: comment.id, pinned: !comment.is_pinned })}
+                disabled={pinComment.isPending}
+                className={`flex items-center gap-1 text-xs transition-colors ${
+                  comment.is_pinned ? 'text-primary' : 'text-muted-foreground hover:text-primary'
+                }`}
+                title={comment.is_pinned ? "Unpin" : "Pin"}
+              >
+                <Pin className={`w-4 h-4 ${comment.is_pinned ? 'fill-current' : ''}`} />
+              </button>
+            )}
+
             {/* Admin moderation menu */}
             {canModerate && (
               <DropdownMenu>
@@ -175,6 +197,14 @@ function CommentItem({ comment, animeId, episodeId, isReply = false }: CommentIt
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem
+                    onClick={() => pinComment.mutate({ commentId: comment.id, pinned: !comment.is_pinned })}
+                    disabled={pinComment.isPending}
+                  >
+                    <Pin className="w-4 h-4 mr-2" />
+                    {comment.is_pinned ? 'Unpin Comment' : 'Pin Comment'}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={() => deleteComment.mutate(comment.id)}
                     disabled={deleteComment.isPending}

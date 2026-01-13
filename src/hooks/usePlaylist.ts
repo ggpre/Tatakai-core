@@ -11,6 +11,15 @@ export interface Playlist {
   cover_image: string | null;
   is_public: boolean;
   items_count: number;
+  share_slug?: string | null;
+  share_description?: string | null;
+  embed_allowed?: boolean | null;
+  is_flagged?: boolean | null;
+  flagged_by?: string | null;
+  flagged_reason?: string | null;
+  flagged_at?: string | null;
+  flag_count?: number | null;
+  admin_reviewed?: boolean | null;
   created_at: string;
   updated_at: string;
 }
@@ -130,19 +139,28 @@ export function useUpdatePlaylist() {
       name, 
       description, 
       isPublic, 
-      coverImage 
+      coverImage,
+      shareSlug,
+      shareDescription,
+      embedAllowed
     }: { 
       id: string; 
       name?: string; 
       description?: string; 
       isPublic?: boolean; 
       coverImage?: string;
+      shareSlug?: string | null;
+      shareDescription?: string | null;
+      embedAllowed?: boolean;
     }) => {
       const updates: any = { updated_at: new Date().toISOString() };
       if (name !== undefined) updates.name = name;
       if (description !== undefined) updates.description = description;
       if (isPublic !== undefined) updates.is_public = isPublic;
       if (coverImage !== undefined) updates.cover_image = coverImage;
+      if (shareSlug !== undefined) updates.share_slug = shareSlug;
+      if (shareDescription !== undefined) updates.share_description = shareDescription;
+      if (embedAllowed !== undefined) updates.embed_allowed = embedAllowed;
 
       const { error } = await supabase
         .from('playlists')
@@ -232,8 +250,11 @@ export function useAddToPlaylist() {
       queryClient.invalidateQueries({ queryKey: ['playlist_items', variables.playlistId] });
       queryClient.invalidateQueries({ queryKey: ['playlists'] });
       queryClient.invalidateQueries({ queryKey: ['playlist', variables.playlistId] });
+      // Invalidate anime-in-playlists lookup so UI shows the "added" state quickly
+      queryClient.invalidateQueries({ queryKey: ['anime_in_playlists', variables.animeId] });
       toast.success('Added to playlist!');
     },
+
     onError: (error: any) => {
       toast.error(error.message);
     },

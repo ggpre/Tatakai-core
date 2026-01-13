@@ -114,7 +114,7 @@ export function TierListCard({ tierList, showAuthor = true, onShare }: TierListC
                 </AvatarFallback>
               </Avatar>
               <span className="text-sm text-muted-foreground">
-                {tierList.profiles.username || 'Anonymous'}
+                {tierList.profiles.username || tierList.profiles.display_name || 'Anonymous'}
               </span>
             </Link>
           )}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { MobileNav } from '@/components/layout/MobileNav';
@@ -10,20 +10,24 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import { useWatchHistory } from '@/hooks/useWatchHistory';
 import { usePublicProfile, usePublicWatchlist, usePublicWatchHistory } from '@/hooks/useProfileFeatures';
+import { useUserForumPosts } from '@/hooks/useForum';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { getProxiedImageUrl } from '@/lib/api';
 import { AvatarPicker } from '@/components/profile/AvatarPicker';
 import { SocialLinksEditor, SocialLinksDisplay, SocialLinks } from '@/components/profile/SocialLinksEditor';
+import { formatDistanceToNow } from 'date-fns';
+import { cn } from '@/lib/utils';
 import { 
   User, Settings, List, History, LogOut, Edit2, Save, X, 
-  Play, Trash2, Clock, CheckCircle, Eye, Pause, XCircle, ArrowLeft, Camera, Shield, Sparkles, Globe, Lock, Share2
+  Play, Trash2, Clock, CheckCircle, Eye, Pause, XCircle, ArrowLeft, Camera, Shield, Sparkles, Globe, Lock, Share2, MessageSquare, AlertCircle
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { StatusVideoBackground } from '@/components/layout/StatusVideoBackground';
+// import { StatusVideoBackground } from '@/components/layout/StatusVideoBackground';
 
 const STATUS_LABELS: Record<string, { label: string; icon: React.ReactNode; color: string; bg: string }> = {
   watching: { label: 'Watching', icon: <Play className="w-3 h-3" />, color: 'text-blue-400', bg: 'bg-blue-400/10' },
@@ -62,6 +66,9 @@ export default function ProfilePage() {
     publicProfile?.show_history ?? true
   );
   
+  // Fetch forum posts for the profile
+  const { data: forumPosts = [], isLoading: loadingForumPosts } = useUserForumPosts(profile?.user_id);
+  
   const watchlist = isViewingOther ? publicWatchlist : ownWatchlist;
   const history = isViewingOther ? publicHistory : ownHistory;
   const loadingWatchlist = isViewingOther ? loadingPublicWatchlist : loadingOwnWatchlist;
@@ -90,7 +97,7 @@ export default function ProfilePage() {
   if (isViewingOther && !loadingPublicProfile && (publicProfileError || !publicProfile)) {
     return (
       <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
-        <StatusVideoBackground overlayColor="from-background/95 via-background/90 to-background/80" />
+        {/* <StatusVideoBackground overlayColor="from-background/95 via-background/90 to-background/80" /> */}
         <Sidebar />
         <main className="relative z-10 pl-0 md:pl-20 lg:pl-24 w-full">
           <div className="max-w-7xl mx-auto px-4 md:px-8 py-20">
@@ -179,11 +186,21 @@ export default function ProfilePage() {
     watching: watchlist?.filter(i => i.status === 'watching').length || 0,
     completed: watchlist?.filter(i => i.status === 'completed').length || 0,
     plan_to_watch: watchlist?.filter(i => i.status === 'plan_to_watch').length || 0,
+    watchTimeSeconds: profile?.total_watch_time_seconds || 0,
+  };
+  
+  // Format watch time to hours and minutes
+  const formatWatchTime = (seconds: number): string => {
+    if (seconds === 0) return '0 hours';
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    if (hours === 0) return `${minutes}m`;
+    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
   };
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
-      <StatusVideoBackground overlayColor="from-background/95 via-background/90 to-background/80" />
+      {/* <StatusVideoBackground overlayColor="from-background/95 via-background/90 to-background/80" /> */}
       <Sidebar />
 
       <main className="relative z-10 pl-0 md:pl-20 lg:pl-24 w-full">
@@ -262,8 +279,8 @@ export default function ProfilePage() {
               {/* Quick Stats for Mobile */}
               <div className="flex md:hidden gap-4 text-sm text-muted-foreground">
                 <div className="text-center">
-                  <div className="font-bold text-foreground text-lg">{stats.watching}</div>
-                  <div>Watching</div>
+                  <div className="font-bold text-foreground text-lg">{formatWatchTime(stats.watchTimeSeconds)}</div>
+                  <div>Watch Time</div>
                 </div>
                 <div className="text-center">
                   <div className="font-bold text-foreground text-lg">{stats.completed}</div>
@@ -296,7 +313,7 @@ export default function ProfilePage() {
                           <Input
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
-                            placeholder="@username"
+                            placeholder="username"
                             className="bg-background/50 backdrop-blur-sm"
                           />
                         </div>
@@ -402,8 +419,8 @@ export default function ProfilePage() {
                 {/* Desktop Stats */}
                 <div className="hidden md:flex gap-8 p-6 rounded-2xl bg-background/40 backdrop-blur-md border border-white/5">
                   <div className="text-center">
-                    <div className="text-2xl font-black text-foreground">{stats.watching}</div>
-                    <div className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Watching</div>
+                    <div className="text-2xl font-black text-primary">{formatWatchTime(stats.watchTimeSeconds)}</div>
+                    <div className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Watch Time</div>
                   </div>
                   <div className="w-px bg-white/10" />
                   <div className="text-center">
@@ -427,7 +444,7 @@ export default function ProfilePage() {
 
           {/* Content Tabs */}
           <div className="mt-12">
-            <Tabs defaultValue={showWatchlistTab ? "watchlist" : (showHistoryTab ? "history" : "watchlist")} className="space-y-8">
+            <Tabs defaultValue={showWatchlistTab ? "watchlist" : (showHistoryTab ? "history" : "forum")} className="space-y-8">
               <TabsList className="bg-background/40 backdrop-blur-md p-1 border border-white/5 rounded-xl w-full md:w-auto flex overflow-x-auto">
                 {showWatchlistTab && (
                   <TabsTrigger value="watchlist" className="flex-1 md:flex-none gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-6">
@@ -441,6 +458,10 @@ export default function ProfilePage() {
                     History
                   </TabsTrigger>
                 )}
+                <TabsTrigger value="forum" className="flex-1 md:flex-none gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg px-6">
+                  <MessageSquare className="w-4 h-4" />
+                  Forum Posts
+                </TabsTrigger>
               </TabsList>
 
               {/* No data available message for public profiles with hidden data */}
@@ -605,6 +626,92 @@ export default function ProfilePage() {
                 </GlassPanel>
               </TabsContent>
               )}
+
+              {/* Forum Posts Tab */}
+              <TabsContent value="forum" className="mt-6">
+                <GlassPanel className="p-6 md:p-8">
+                  <div className="flex items-center justify-between mb-8">
+                    <h2 className="text-2xl font-bold flex items-center gap-2">
+                      <MessageSquare className="w-6 h-6 text-primary" />
+                      {isViewingOther ? 'Forum Posts' : 'My Forum Posts'}
+                    </h2>
+                  </div>
+
+                  {loadingForumPosts ? (
+                    <div className="text-center py-12 text-muted-foreground">Loading forum posts...</div>
+                  ) : forumPosts.length === 0 ? (
+                    <div className="text-center py-20 border-2 border-dashed border-white/5 rounded-2xl">
+                      <MessageSquare className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" />
+                      <h3 className="text-xl font-bold mb-2">No forum posts</h3>
+                      <p className="text-muted-foreground mb-6">{isViewingOther ? 'This user hasn\'t posted in the forum yet.' : 'Your forum posts will appear here.'}</p>
+                      {!isViewingOther && (
+                        <Button onClick={() => navigate('/community/forum')}>
+                          Go to Forum
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {forumPosts.map((post: any) => (
+                        <Link
+                          key={post.id}
+                          to={post.is_approved === false ? '#' : `/community/forum/${post.id}`}
+                          className={cn("block", post.is_approved === false && "cursor-default")}
+                          onClick={(e) => {
+                            if (post.is_approved === false) {
+                              e.preventDefault();
+                            }
+                          }}
+                        >
+                          <div className={cn(
+                            "p-4 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 transition-colors",
+                            post.is_approved === false && "opacity-70 hover:bg-white/5"
+                          )}>
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h3 className="font-bold text-lg line-clamp-2">
+                                    {post.title}
+                                  </h3>
+                                  {post.is_approved === false && !isViewingOther && (
+                                    <Badge variant="secondary" className="gap-1 text-xs bg-yellow-500/20 text-yellow-400">
+                                      <AlertCircle className="w-3 h-3" />
+                                      Pending
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                                  {post.content}
+                                </p>
+                                {post.image_url && (
+                                  <div className="mb-2">
+                                    <img
+                                      src={getProxiedImageUrl(post.image_url)}
+                                      alt="Forum post image"
+                                      className="w-16 h-16 object-cover rounded border border-white/10"
+                                    />
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                  <span className="flex items-center gap-1">
+                                    <MessageSquare className="w-3 h-3" />
+                                    {post.comments_count || 0}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <Eye className="w-3 h-3" />
+                                    {post.views_count || 0}
+                                  </span>
+                                  <span>{formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </GlassPanel>
+              </TabsContent>
             </Tabs>
           </div>
         </div>

@@ -195,7 +195,7 @@ export function TrendingGrid({ animes }: TrendingGridProps) {
           <Flame className="w-5 h-5 text-orange" />
           Trending Now
         </h3>
-        <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors border-b border-transparent hover:border-foreground pb-0.5">
+        <a href="/collections" className="text-sm text-muted-foreground hover:text-foreground transition-colors border-b border-transparent hover:border-foreground pb-0.5">
           View All Collection
         </a>
       </div>

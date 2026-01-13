@@ -51,6 +51,9 @@ export function AddToPlaylistButton({
   const createPlaylist = useCreatePlaylist();
   const addToPlaylist = useAddToPlaylist();
 
+  // Show a visual indication if this anime is already in any of the user's playlists
+  const isInAnyPlaylist = (inPlaylists || []).length > 0;
+
   if (!user) {
     return (
       <Button 
@@ -117,15 +120,24 @@ export function AddToPlaylistButton({
           size={variant === 'icon' ? 'icon' : variant === 'mini' ? 'sm' : 'default'}
           className={cn(
             variant === 'mini' && 'h-8 px-2 text-xs',
+            variant === 'icon' && 'h-14 w-14 rounded-full',
             className
           )}
         >
           {variant === 'icon' || variant === 'mini' ? (
-            <ListPlus className="w-4 h-4" />
+            isInAnyPlaylist ? (
+              <Check className={variant === 'icon' ? "w-6 h-6" : "w-4 h-4"} />
+            ) : (
+              <ListPlus className={variant === 'icon' ? "w-6 h-6" : "w-4 h-4"} />
+            )
           ) : (
             <>
-              <ListPlus className="w-4 h-4 mr-2" />
-              Add to Playlist
+              {isInAnyPlaylist ? (
+                <Check className="w-4 h-4 mr-2" />
+              ) : (
+                <ListPlus className="w-4 h-4 mr-2" />
+              )}
+              {isInAnyPlaylist ? 'Added' : 'Add to Playlist'}
             </>
           )}
         </Button>

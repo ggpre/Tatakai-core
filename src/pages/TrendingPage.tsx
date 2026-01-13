@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton-custom";
 import { useTrendingAnime, formatViewCount } from "@/hooks/useViews";
 import { fetchHome, TrendingAnime as ApiTrendingAnime, AnimeCard } from "@/lib/api";
 import { Flame, TrendingUp, Clock, Sparkles } from "lucide-react";
+import { Sparkline } from '@/components/ui/Sparkline';
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -25,22 +26,22 @@ function trendingToCard(trending: ApiTrendingAnime): AnimeCard {
 
 export default function TrendingPage() {
   const [timeFrame, setTimeFrame] = useState<TimeFrame>('week');
-  
-  // Our internal trending data from view counts
-  const { data: internalTrending, isLoading: loadingInternal } = useTrendingAnime(50);
-  
+
+  // Use improved trending RPC with timeframe
+  const { data: internalTrending, isLoading: loadingInternal } = useTrendingAnime(50, timeFrame);
+
   // Fallback to API trending
   const { data: homepageData, isLoading: loadingHomepage } = useQuery({
     queryKey: ['homepage'],
     queryFn: fetchHome,
     staleTime: 300000,
   });
-  
+
   const isLoading = loadingInternal || loadingHomepage;
-  
+
   // If we have internal trending data, use it; otherwise fall back to API
   const hasInternalData = internalTrending && internalTrending.length > 0;
-  
+
   // Get anime cards from API homepage data
   const apiTrending = homepageData?.trendingAnimes || [];
 
@@ -50,6 +51,7 @@ export default function TrendingPage() {
     { id: 'month', label: 'This Month', icon: <Flame className="w-4 h-4" /> },
     { id: 'all', label: 'All Time', icon: <Sparkles className="w-4 h-4" /> },
   ];
+
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
@@ -121,22 +123,28 @@ export default function TrendingPage() {
           </div>
         ) : hasInternalData ? (
           <div className="space-y-6">
-            {/* We'd need to fetch anime details for each trending ID - for now show API data */}
-            <div className="text-center py-8 text-muted-foreground">
-              <p>View-based trending is being calculated...</p>
-              <p className="text-sm mt-2">Showing popular anime based on community activity.</p>
+            <div className="text-center py-4 text-muted-foreground">
+              <p>View-based trending is being calculated using recent views, completion, and favorites.</p>
+              <p className="text-sm mt-2">Showing community-driven trending with timeframe set to <strong>{timeFrame}</strong>.</p>
             </div>
-            
-            {/* API Trending Grid */}
+
+            {/* Internal Trending Grid with sparklines */}
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
-              {apiTrending.map((anime, index) => (
-                <div key={anime.id} className="relative group">
-                  {/* Rank Badge with glow */}
+              {internalTrending.map((t: any, index: number) => (
+                <div key={t.anime_id} className="relative group">
                   <div className="absolute -top-3 -left-3 z-20 w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 via-red-500 to-pink-500 flex items-center justify-center text-white text-sm font-bold shadow-2xl shadow-orange-500/50 ring-2 ring-background group-hover:scale-110 transition-transform duration-300">
                     {index + 1}
                   </div>
+
                   <div className="hover:scale-[1.02] transition-transform duration-300">
-                    <AnimeCardWithPreview anime={trendingToCard(anime)} />
+                    <AnimeCardWithPreview anime={trendingToCard({ id: t.anime_id, name: t.anime_id, poster: '' })} />
+
+                    <div className="mt-2 flex items-center justify-between px-2">
+                      <div className="text-xs text-muted-foreground">{formatViewCount(t.views_week || t.views_window || 0)} views</div>
+                      <div className="w-20">
+                        <Sparkline series={t.sparkline as any} />
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}

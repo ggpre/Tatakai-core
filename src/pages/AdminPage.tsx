@@ -14,10 +14,17 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { AnalyticsDashboard } from '@/components/admin/AnalyticsDashboard';
 import { VideoServerManager } from '@/components/admin/VideoServerManager';
+import { IncidentManager } from '@/components/admin/IncidentManager';
+import { PopupBuilder } from '@/components/admin/PopupBuilder';
+import { ChangelogManager } from '@/components/admin/ChangelogManager';
+import { ContentModerationManager } from '@/components/admin/ContentModerationManager';
+import { AdminLogs } from '@/components/admin/AdminLogs';
+import { PendingForumPosts } from '@/components/admin/PendingForumPosts';
+import { PendingSuggestions } from '@/components/admin/PendingSuggestions';
 import { 
   ArrowLeft, Shield, ShieldCheck, ShieldOff, Users, MessageSquare, Star, Search,
   Trash2, Ban, CheckCircle, AlertTriangle, BarChart3, Send,
-  Settings, Power, Unlock, BellRing, Server
+  Settings, Power, Unlock, BellRing, Server, AlertCircle, Megaphone, History, Layers, FileText, Image
 } from 'lucide-react';
 
 export default function AdminPage() {
@@ -359,32 +366,58 @@ export default function AdminPage() {
 
         {/* Tabs */}
         <Tabs defaultValue="analytics" className="space-y-6">
-          <TabsList className="bg-muted/50 p-1 flex-wrap">
-            <TabsTrigger value="analytics" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <BarChart3 className="w-4 h-4" />
-              Analytics
-            </TabsTrigger>
-            <TabsTrigger value="users" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <Users className="w-4 h-4" />
-              Users
-            </TabsTrigger>
-            <TabsTrigger value="comments" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <MessageSquare className="w-4 h-4" />
-              Comments
-            </TabsTrigger>
-            <TabsTrigger value="messages" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <Send className="w-4 h-4" />
-              Messages
-            </TabsTrigger>
-            <TabsTrigger value="servers" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <Server className="w-4 h-4" />
-              Video Servers
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <Settings className="w-4 h-4" />
-              Settings
-            </TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto -mx-6 px-6">
+            <TabsList className="bg-muted/50 p-1 inline-flex w-full sm:w-auto gap-1 rounded-lg">
+              <TabsTrigger value="analytics" className="gap-1.5 text-xs whitespace-nowrap px-2 py-1.5 md:px-3 md:py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <BarChart3 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline text-xs md:text-sm">Analytics</span>
+              </TabsTrigger>
+              <TabsTrigger value="users" className="gap-1.5 text-xs whitespace-nowrap px-2 py-1.5 md:px-3 md:py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Users className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline text-xs md:text-sm">Users</span>
+              </TabsTrigger>
+              <TabsTrigger value="comments" className="gap-1.5 text-xs whitespace-nowrap px-2 py-1.5 md:px-3 md:py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline text-xs md:text-sm">Comments</span>
+              </TabsTrigger>
+              <TabsTrigger value="content" className="gap-1.5 text-xs whitespace-nowrap px-2 py-1.5 md:px-3 md:py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Layers className="w-3.5 h-3.5" />
+                <span className="hidden md:inline text-xs md:text-sm">Content</span>
+              </TabsTrigger>
+              <TabsTrigger value="messages" className="gap-1.5 text-xs whitespace-nowrap px-2 py-1.5 md:px-3 md:py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Send className="w-3.5 h-3.5" />
+                <span className="hidden md:inline text-xs md:text-sm">Messages</span>
+              </TabsTrigger>
+              <TabsTrigger value="incidents" className="gap-1.5 text-xs whitespace-nowrap px-2 py-1.5 md:px-3 md:py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <AlertCircle className="w-3.5 h-3.5" />
+                <span className="hidden lg:inline text-xs md:text-sm">Incidents</span>
+              </TabsTrigger>
+              <TabsTrigger value="popups" className="gap-1.5 text-xs whitespace-nowrap px-2 py-1.5 md:px-3 md:py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Megaphone className="w-3.5 h-3.5" />
+                <span className="hidden lg:inline text-xs md:text-sm">Popups</span>
+              </TabsTrigger>
+              <TabsTrigger value="changelog" className="gap-1.5 text-xs whitespace-nowrap px-2 py-1.5 md:px-3 md:py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <History className="w-3.5 h-3.5" />
+                <span className="hidden lg:inline text-xs md:text-sm\">Changelog</span>
+              </TabsTrigger>
+              <TabsTrigger value="logs" className="gap-1.5 text-xs whitespace-nowrap px-2 py-1.5 md:px-3 md:py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <FileText className="w-3.5 h-3.5" />
+                <span className="hidden xl:inline text-xs md:text-sm">Logs</span>
+              </TabsTrigger>
+              <TabsTrigger value="pending" className="gap-1.5 text-xs whitespace-nowrap px-2 py-1.5 md:px-3 md:py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Image className="w-3.5 h-3.5" />
+                <span className="hidden md:inline text-xs md:text-sm">Pending</span>
+              </TabsTrigger>
+              <TabsTrigger value="servers" className="gap-1.5 text-xs whitespace-nowrap px-2 py-1.5 md:px-3 md:py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Server className="w-3.5 h-3.5" />
+                <span className="hidden xl:inline text-xs md:text-sm">Servers</span>
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="gap-1.5 text-xs whitespace-nowrap px-2 py-1.5 md:px-3 md:py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Settings className="w-3.5 h-3.5" />
+                <span className="hidden md:inline text-xs md:text-sm">Settings</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Analytics Tab */}
           <TabsContent value="analytics">
@@ -574,6 +607,13 @@ export default function AdminPage() {
             </GlassPanel>
           </TabsContent>
 
+          {/* Content Moderation Tab */}
+          <TabsContent value="content">
+            <GlassPanel className="p-6">
+              <ContentModerationManager />
+            </GlassPanel>
+          </TabsContent>
+
           {/* Messages Tab */}
           <TabsContent value="messages">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -679,6 +719,49 @@ export default function AdminPage() {
             <GlassPanel className="p-6">
               <VideoServerManager />
             </GlassPanel>
+          </TabsContent>
+
+          {/* Incidents Tab */}
+          <TabsContent value="incidents">
+            <GlassPanel className="p-6">
+              <IncidentManager />
+            </GlassPanel>
+          </TabsContent>
+
+          {/* Popups Tab */}
+          <TabsContent value="popups">
+            <GlassPanel className="p-6">
+              <PopupBuilder />
+            </GlassPanel>
+          </TabsContent>
+
+          {/* Changelog Tab */}
+          <TabsContent value="changelog">
+            <GlassPanel className="p-6">
+              <ChangelogManager />
+            </GlassPanel>
+          </TabsContent>
+
+          {/* Admin Logs Tab */}
+          <TabsContent value="logs">
+            <GlassPanel className="p-6">
+              <AdminLogs />
+            </GlassPanel>
+          </TabsContent>
+
+          {/* Pending Forum Posts Tab */}
+          <TabsContent value="pending">
+            <div className="space-y-6">
+              <GlassPanel className="p-6">
+                <h2 className="font-display text-xl font-semibold mb-6">Pending Forum Posts</h2>
+                <PendingForumPosts />
+              </GlassPanel>
+              
+              <GlassPanel className="p-6">
+                <h2 className="font-display text-xl font-semibold mb-6">User Suggestions</h2>
+                <PendingSuggestions />
+              </GlassPanel>
+            </div>
           </TabsContent>
 
           {/* Settings Tab */}

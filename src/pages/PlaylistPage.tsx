@@ -274,6 +274,9 @@ export function PlaylistViewPage() {
   const [editName, setEditName] = useState('');
   const [editDesc, setEditDesc] = useState('');
   const [editPublic, setEditPublic] = useState(false);
+  const [editShareSlug, setEditShareSlug] = useState<string | undefined>(undefined);
+  const [editShareDesc, setEditShareDesc] = useState<string | undefined>(undefined);
+  const [editEmbedAllowed, setEditEmbedAllowed] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
 
   const isOwner = user && playlist && user.id === playlist.user_id;
@@ -283,7 +286,35 @@ export function PlaylistViewPage() {
     setEditName(playlist.name);
     setEditDesc(playlist.description || '');
     setEditPublic(playlist.is_public);
+    setEditShareSlug(playlist.share_slug ?? undefined);
+    setEditShareDesc(playlist.share_description ?? undefined);
+    setEditEmbedAllowed(!!playlist.embed_allowed);
     setShowEdit(true);
+  };
+
+  // Try to update playlist with optional share fields; handle slug collisions by retrying
+  const handleGenerateSlug = async () => {
+    if (!playlist) return;
+    const { generateShortSlug } = await import('@/lib/slug');
+
+    // Try up to 3 times to avoid unique index collisions
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const candidate = generateShortSlug(8);
+      try {
+        await updatePlaylist.mutateAsync({ id: playlist.id, shareSlug: candidate, isPublic: true });
+        setEditShareSlug(candidate);
+        setEditPublic(true);
+        return;
+      } catch (err: any) {
+        // Unique violation code 23505
+        if (err?.message?.includes('23505') || /unique/i.test(err?.message || '')) {
+          continue; // try another
+        }
+        throw err;
+      }
+    }
+    // If we reach here, failed to generate
+    toast.error('Failed to generate a unique share link. Try again later.');
   };
 
   const handleUpdate = async () => {
@@ -294,6 +325,9 @@ export function PlaylistViewPage() {
       name: editName.trim(),
       description: editDesc.trim() || undefined,
       isPublic: editPublic,
+      shareSlug: editShareSlug ?? undefined,
+      shareDescription: editShareDesc ?? undefined,
+      embedAllowed: editEmbedAllowed,
     });
     
     setShowEdit(false);
@@ -314,7 +348,7 @@ export function PlaylistViewPage() {
   };
 
   const handleShare = () => {
-    const url = window.location.href;
+    const url = playlist?.share_slug ? `${window.location.origin}/p/${playlist.share_slug}` : window.location.href;
     navigator.clipboard.writeText(url);
     toast.success('Link copied to clipboard!');
   };
@@ -559,6 +593,17 @@ export function PlaylistViewPage() {
                 rows={3}
               />
             </div>
+
+            <div className="space-y-2">
+              <Label>Share description (optional)</Label>
+              <Textarea
+                value={editShareDesc}
+                onChange={(e) => setEditShareDesc(e.target.value)}
+                rows={2}
+                placeholder="A short blurb shown on public pages"
+              />
+            </div>
+
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 {editPublic ? (
@@ -570,8 +615,35 @@ export function PlaylistViewPage() {
               </div>
               <Switch
                 checked={editPublic}
-                onCheckedChange={setEditPublic}
+                onCheckedChange={async (val) => {
+                  setEditPublic(val);
+                  // If making public and no slug exists, generate one
+                  if (val && !editShareSlug) {
+                    await handleGenerateSlug();
+                  }
+                }}
               />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Label>Allow embed</Label>
+              </div>
+              <Switch checked={editEmbedAllowed} onCheckedChange={setEditEmbedAllowed} />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Input value={editShareSlug || ''} readOnly placeholder="No share link yet" />
+              <Button variant="outline" onClick={handleGenerateSlug} className="gap-2">
+                <GripVertical className="w-4 h-4" />
+                Generate
+              </Button>
+              {editShareSlug && (
+                <Button variant="outline" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/p/${editShareSlug}`); toast.success('Share link copied'); }} className="gap-2">
+                  <Share2 className="w-4 h-4" />
+                  Copy Link
+                </Button>
+              )}
             </div>
           </div>
           <DialogFooter>

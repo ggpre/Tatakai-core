@@ -116,3 +116,26 @@ export function useRemoveFromWatchlist() {
     },
   });
 }
+
+// Bulk remove multiple anime ids from watchlist (used for multi-select delete)
+export function useBulkRemoveFromWatchlist() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (animeIds: string[]) => {
+      if (!animeIds || animeIds.length === 0) return;
+      const { error } = await supabase
+        .from('watchlist')
+        .delete()
+        .in('anime_id', animeIds);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['watchlist'] });
+      toast.success('Removed items from watchlist');
+    },
+    onError: (error: any) => {
+      toast.error(`Failed to remove: ${error?.message || String(error)}`);
+    },
+  });
+}

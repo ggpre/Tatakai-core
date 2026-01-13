@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchStreamingSources, fetchWatchanimeworldSources } from "@/lib/api";
+import { fetchStreamingSources, fetchWatchanimeworldSources, fetchAnimeHindiDubbedData, extractEmbedVideo } from "@/lib/api";
 import type { StreamingData, StreamingSource } from "@/lib/api";
 import { slugToSearchQuery, parseEpisodeUrl, stringSimilarity } from "@/integrations/watchanimeworld";
+import { parseEpisodeNumber } from "@/integrations/animehindidubbed";
 
 /**
- * Combined hook that fetches both HiAnime and WatchAnimeWorld sources
+ * Combined hook that fetches HiAnime, WatchAnimeWorld, and AnimeHindiDubbed sources
  */
 export function useCombinedSources(
   episodeId: string | undefined,
@@ -13,7 +14,7 @@ export function useCombinedSources(
   server: string = "hd-2",
   category: string = "sub"
 ) {
-  return useQuery<StreamingData & { hasWatchAnimeWorld: boolean }, Error>({
+  return useQuery<StreamingData & { hasWatchAnimeWorld: boolean; hasAnimeHindiDubbed: boolean }, Error>({
     queryKey: ["combined-sources", episodeId, animeName, episodeNumber, server, category],
     queryFn: async () => {
       if (!episodeId) throw new Error("Episode ID required");
@@ -24,6 +25,10 @@ export function useCombinedSources(
       // Try to find and fetch WatchAnimeWorld sources
       let watchAwSources: StreamingSource[] = [];
       let hasWatchAnimeWorld = false;
+      
+      // Try to find and fetch AnimeHindiDubbed sources
+      let animeHindiSources: StreamingSource[] = [];
+      let hasAnimeHindiDubbed = false;
 
       if (episodeId && episodeNumber !== undefined) {
         try {
@@ -75,13 +80,135 @@ export function useCombinedSources(
         }
       }
 
+      // Try to fetch AnimeHindiDubbed sources
+      if (episodeId && episodeNumber !== undefined) {
+        try {
+          const baseSlug = episodeId.split('?')[0];
+          const animeSlug = baseSlug.replace(/-\d+$/, '');
+          
+          console.log('AnimeHindiDubbed: animeSlug=', animeSlug, 'episodeNumber=', episodeNumber);
+          
+          if (animeSlug) {
+            const animeData = await fetchAnimeHindiDubbedData(animeSlug);
+            
+            // Convert episode number to format used by AnimeHindiDubbed
+            // Try simple format first ("01", "02", etc.)
+            const episodeKey = episodeNumber.toString().padStart(2, '0');
+            
+            // Find episode in Berlin server (Servabyss)
+            const berlinEpisode = animeData.servers.servabyss?.find(
+              ep => ep.name === episodeKey || 
+                    parseEpisodeNumber(ep.name)?.episode === episodeNumber
+            );
+            
+            // Find episode in Madrid server (Vidgroud)
+            const madridEpisode = animeData.servers.vidgroud?.find(
+              ep => ep.name === episodeKey || 
+                    parseEpisodeNumber(ep.name)?.episode === episodeNumber
+            );
+            
+            if (berlinEpisode) {
+              animeHindiSources.push({
+                url: berlinEpisode.url,
+                isM3U8: false,
+                quality: '720p',
+                language: 'Berlin',
+                langCode: 'berlin',
+                isDub: true,
+                providerName: 'Berlin',
+                isEmbed: true,
+                needsHeadless: true,
+              });
+              hasAnimeHindiDubbed = true;
+              console.log('Found Berlin (Servabyss) source for episode', episodeNumber);
+            }
+            
+            if (madridEpisode) {
+              animeHindiSources.push({
+                url: madridEpisode.url,
+                isM3U8: false,
+                quality: '720p',
+                language: 'Madrid',
+                langCode: 'madrid',
+                isDub: true,
+                providerName: 'Madrid',
+                isEmbed: true,
+                needsHeadless: true,
+              });
+              hasAnimeHindiDubbed = true;
+              console.log('Found Madrid (Vidgroud) source for episode', episodeNumber);
+            }
+          }
+        } catch (error) {
+          console.warn('Failed to fetch AnimeHindiDubbed sources:', error);
+          // Silently fail - just don't show AnimeHindiDubbed sources
+        }
+      }
+
       // Combine sources
-      const combinedSources = [...hiAnimeData.sources, ...watchAwSources];
+      const combinedSources = [...hiAnimeData.sources, ...watchAwSources, ...animeHindiSources];
+
+      // Try to extract direct video URLs from embed sources using Puppeteer service
+      const processedSources: StreamingSource[] = [];
+      
+      for (const source of combinedSources) {
+        // Only process embed sources (WatchAnimeWorld, AnimeHindiDubbed)
+        if (source.isEmbed && source.url) {
+          try {
+            console.log(`[Extractor] Attempting to extract from: ${source.url}`);
+            
+            const extraction = await extractEmbedVideo(source.url, 30000);
+            
+            if (extraction.success && extraction.sources && extraction.sources.length > 0) {
+              console.log(`[Extractor] Successfully extracted ${extraction.sources.length} source(s)`);
+              
+              // Convert extracted sources to StreamingSource format and add both direct + fallback iframe
+              for (const extracted of extraction.sources) {
+                // Skip Google Cloud Storage URLs with billing issues
+                if (extracted.url.includes('storage.googleapis.com')) {
+                  console.warn(`[Extractor] Skipping Google Storage URL (likely billing/auth issue): ${extracted.url}`);
+                  continue;
+                }
+                
+                processedSources.push({
+                  url: extracted.url,
+                  isM3U8: extracted.type === 'hls',
+                  quality: extracted.quality || source.quality || '720p',
+                  language: source.language,
+                  langCode: source.langCode,
+                  isDub: source.isDub,
+                  providerName: `${source.providerName} (Direct)`,
+                  isEmbed: false,
+                  needsHeadless: false,
+                });
+              }
+              
+              // Also keep original embed as fallback
+              processedSources.push({
+                ...source,
+                providerName: `${source.providerName} (Embed)`,
+              });
+            } else {
+              // Extraction failed, keep as embed source (will use iframe)
+              console.log(`[Extractor] Failed to extract from ${source.providerName}: ${extraction.error || 'No sources found'}`);
+              processedSources.push(source);
+            }
+          } catch (error) {
+            // On error, keep original embed source
+            console.warn(`[Extractor] Error processing embed:`, error);
+            processedSources.push(source);
+          }
+        } else {
+          // Non-embed sources pass through unchanged
+          processedSources.push(source);
+        }
+      }
 
       return {
         ...hiAnimeData,
-        sources: combinedSources,
+        sources: processedSources,
         hasWatchAnimeWorld,
+        hasAnimeHindiDubbed,
       };
     },
     enabled: !!episodeId,

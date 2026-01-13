@@ -314,3 +314,102 @@ export function useUpdateShowcaseAnime() {
     },
   });
 }
+
+// Check if current user follows a profile
+export function useIsFollowing(userId?: string) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['is_following', userId],
+    queryFn: async () => {
+      if (!user || !userId) return false;
+
+      const { data, error } = await supabase
+        .from('user_follows')
+        .select('id')
+        .eq('follower_id', user.id)
+        .eq('following_id', userId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      return !!data;
+    },
+    enabled: !!user && !!userId,
+  });
+}
+
+// Get follower/following counts
+export function useFollowCounts(userId?: string) {
+  return useQuery({
+    queryKey: ['follow_counts', userId],
+    queryFn: async () => {
+      if (!userId) return { followers: 0, following: 0 };
+
+      const [followersRes, followingRes] = await Promise.all([
+        supabase
+          .from('user_follows')
+          .select('id', { count: 'exact', head: true })
+          .eq('following_id', userId),
+        supabase
+          .from('user_follows')
+          .select('id', { count: 'exact', head: true })
+          .eq('follower_id', userId),
+      ]);
+
+      return {
+        followers: followersRes.count || 0,
+        following: followingRes.count || 0,
+      };
+    },
+    enabled: !!userId,
+  });
+}
+
+// Follow a user
+export function useFollowUser() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (followingId: string) => {
+      if (!user) throw new Error('Must be logged in');
+      if (user.id === followingId) throw new Error('Cannot follow yourself');
+
+      const { error } = await supabase
+        .from('user_follows')
+        .insert({ follower_id: user.id, following_id: followingId });
+
+      if (error) throw error;
+    },
+    onSuccess: (_, followingId) => {
+      queryClient.invalidateQueries({ queryKey: ['is_following', followingId] });
+      queryClient.invalidateQueries({ queryKey: ['follow_counts', followingId] });
+      queryClient.invalidateQueries({ queryKey: ['follow_counts', user?.id] });
+    },
+  });
+}
+
+// Unfollow a user
+export function useUnfollowUser() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (followingId: string) => {
+      if (!user) throw new Error('Must be logged in');
+
+      const { error } = await supabase
+        .from('user_follows')
+        .delete()
+        .eq('follower_id', user.id)
+        .eq('following_id', followingId);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, followingId) => {
+      queryClient.invalidateQueries({ queryKey: ['is_following', followingId] });
+      queryClient.invalidateQueries({ queryKey: ['follow_counts', followingId] });
+      queryClient.invalidateQueries({ queryKey: ['follow_counts', user?.id] });
+    },
+  });
+}

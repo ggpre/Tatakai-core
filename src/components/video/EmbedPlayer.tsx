@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2, AlertCircle, RefreshCw } from "lucide-react";
 
 interface EmbedPlayerProps {
@@ -11,6 +11,10 @@ interface EmbedPlayerProps {
 export function EmbedPlayer({ url, poster, language, onError }: EmbedPlayerProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [shieldArmed, setShieldArmed] = useState(true);
+  const [shieldClicks, setShieldClicks] = useState(0);
+  const rearmTimer = useRef<number | null>(null);
 
   const handleLoad = () => {
     setIsLoading(false);
@@ -23,14 +27,44 @@ export function EmbedPlayer({ url, poster, language, onError }: EmbedPlayerProps
   };
 
   const handleRetry = () => {
-    setIsLoading(true);
     setError(false);
-    // Force iframe reload
-    const iframe = document.querySelector('iframe[data-embed-player]') as HTMLIFrameElement;
-    if (iframe) {
-      iframe.src = iframe.src;
-    }
+    setIsLoading(true);
+    setReloadKey((k) => k + 1);
+    setShieldArmed(true);
+    setShieldClicks(0);
   };
+
+  // Swallow first two clicks/taps to block redirect; then allow for a short window and re-arm
+  const handleShieldPointer = (
+    e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShieldClicks((c) => {
+      const next = c + 1;
+      if (next < 2) {
+        return next; // still block
+      }
+      // allow interactions for a short window
+      setShieldArmed(false);
+      if (rearmTimer.current) {
+        window.clearTimeout(rearmTimer.current);
+      }
+      rearmTimer.current = window.setTimeout(() => {
+        setShieldArmed(true);
+        setShieldClicks(0);
+      }, 4000);
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    return () => {
+      if (rearmTimer.current) {
+        window.clearTimeout(rearmTimer.current);
+      }
+    };
+  }, []);
 
   if (error) {
     return (
@@ -65,16 +99,29 @@ export function EmbedPlayer({ url, poster, language, onError }: EmbedPlayerProps
           </div>
         </div>
       )}
+
+      {shieldArmed && !error && (
+        <div
+          className="absolute inset-0 z-20 cursor-pointer"
+          onMouseDown={handleShieldPointer}
+          onTouchStart={handleShieldPointer}
+          title="Tap to enable player"
+        >
+          <div className="absolute bottom-3 right-3 bg-black/60 text-white text-xs px-2 py-1 rounded">
+            Tap to start
+          </div>
+        </div>
+      )}
+      
       <iframe
-        data-embed-player
+        key={reloadKey}
         src={url}
         className="w-full h-full border-0"
         allowFullScreen
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         onLoad={handleLoad}
         onError={handleError}
-        referrerPolicy="origin"
-        sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+        title={`Video player - ${language || "Embed"}`}
       />
     </div>
   );

@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video Player - VM Mode</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { 
+      width: 100%; 
+      height: 100%; 
+      overflow: hidden; 
+      background: #000; 
+    }
+    
+    /* Hidden VM iframe for video extraction */
+    #vm-frame { 
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      top: -9999px;
+      left: -9999px;
+      opacity: 0;
+      pointer-events: none;
+      border: none;
+    }
+    
+    /* Clean video player */
+    #video-player {
+      width: 100%;
+      height: 100%;
+      background: #000;
+      display: none;
+    }
+    
+    /* Loading state */
+    #loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      color: white;
+      font-family: system-ui, sans-serif;
+      z-index: 10;
+    }
+    
+    .spinner {
+      border: 4px solid rgba(255,255,255,0.1);
+      border-top: 4px solid white;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    #status {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: rgba(0,200,0,0.9);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 25px;
+      font-family: system-ui, sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      z-index: 10001;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    }
+    
+    .error-msg {
+      background: rgba(200,0,0,0.9) !important;
+    }
+  </style>
+</head>
+<body>
+  <div id="status">🔍 Extracting video...</div>
+  
+  <div id="loading">
+    <div class="spinner"></div>
+    <p>Loading video from isolated environment...</p>
+    <p style="font-size: 12px; opacity: 0.7; margin-top: 10px;">Redirects will be ignored</p>
+  </div>
+  
+  <!-- Hidden VM iframe for extraction -->
+  <iframe 
+    id="vm-frame"
+    sandbox="allow-scripts allow-same-origin"
+  ></iframe>
+  
+  <!-- Clean video player (hidden until source extracted) -->
+  <video 
+    id="video-player"
+    controls
+    autoplay
+    playsinline
+    controlsList="nodownload"
+  ></video>
+
+  <script>
+    (function() {
+      const vmFrame = document.getElementById('vm-frame');
+      const videoPlayer = document.getElementById('video-player');
+      const loading = document.getElementById('loading');
+      const status = document.getElementById('status');
+      
+      const EMBED_URL = 'PLACEHOLDER_EMBED_URL';
+      const TIMEOUT = PLACEHOLDER_TIMEOUT;
+      let redirectsBlocked = 0;
+      
+      console.log('[VM] Initializing video extraction from:', EMBED_URL);
+      
+      // Block ALL navigation attempts at parent level
+      window.open = function() { 
+        redirectsBlocked++;
+        console.log('[VM] Popup blocked #' + redirectsBlocked);
+        return null; 
+      };
+      
+      // Prevent any parent navigation
+      const originalLocation = window.location.href;
+      setInterval(function() {
+        if (window.location.href !== originalLocation) {
+          console.warn('[VM] Parent redirect detected, restoring...');
+          window.history.back();
+        }
+      }, 50);
+      
+      // VM extractor script - injected into hidden iframe
+      const extractorScript = `
+        (function() {
+          console.log('[VM Extractor] Starting in isolated environment');
+          
+          // Block ALL popups and redirects in VM
+          window.open = () => null;
+          window.location.assign = () => {};
+          window.location.replace = () => {};
+          
+          // Find video sources
+          function extractVideoSources() {
+            const sources = [];
+            const seenUrls = new Set();
+            
+            // Check video elements
+            const videos = document.querySelectorAll('video');
+            videos.forEach(v => {
+              if (v.src && !seenUrls.has(v.src)) {
+                sources.push({ url: v.src, type: 'video-src', quality: 'auto' });
+                seenUrls.add(v.src);
+              }
+              if (v.currentSrc && !seenUrls.has(v.currentSrc)) {
+                sources.push({ url: v.currentSrc, type: 'video-currentSrc', quality: 'auto' });
+                seenUrls.add(v.currentSrc);
+              }
+              
+              // Check source children
+              v.querySelectorAll('source').forEach(s => {
+                if (s.src && !seenUrls.has(s.src)) {
+                  sources.push({ url: s.src, type: 'source-element', quality: s.getAttribute('label') || 'auto' });
+                  seenUrls.add(s.src);
+                }
+              });
+            });
+            
+            // Check entire page text for video URLs
+            try {
+              const pageText = document.documentElement.innerHTML;
+              
+              // Check for HLS/m3u8
+              const m3u8Matches = pageText.match(/https?:\\/\\/[^\\s"'<>]+\\.m3u8[^\\s"'<>]*/gi);
+              if (m3u8Matches) {
+                m3u8Matches.forEach(url => {
+                  if (!seenUrls.has(url)) {
+                    sources.push({ url, type: 'hls-text', quality: 'auto' });
+                    seenUrls.add(url);
+                  }
+                });
+              }
+              
+              // Check for MP4 sources
+              const mp4Matches = pageText.match(/https?:\\/\\/[^\\s"'<>]+\\.mp4[^\\s"'<>]*/gi);
+              if (mp4Matches) {
+                mp4Matches.forEach(url => {
+                  if (!seenUrls.has(url)) {
+                    sources.push({ url, type: 'mp4-text', quality: url.match(/\\d{3,4}p/)?.[0] || 'auto' });
+                    seenUrls.add(url);
+                  }
+                });
+              }
+            } catch(e) {
+              console.error('[VM Extractor] Error scanning page:', e);
+            }
+            
+            console.log('[VM Extractor] Found sources:', sources);
+            return sources;
+          }
+          
+          // Monitor for video elements
+          let checkCount = 0;
+          const maxChecks = 100; // 20 seconds max
+          
+          const interval = setInterval(() => {
+            checkCount++;
+            const sources = extractVideoSources();
+            
+            if (sources.length > 0) {
+              console.log('[VM Extractor] Video found! Sending to parent...');
+              window.parent.postMessage({
+                type: 'VIDEO_EXTRACTED',
+                sources: sources
+              }, '*');
+              clearInterval(interval);
+            } else if (checkCount >= maxChecks) {
+              console.error('[VM Extractor] Timeout - no video found after 20s');
+              window.parent.postMessage({
+                type: 'EXTRACTION_FAILED',
+                error: 'No video sources found after timeout'
+              }, '*');
+              clearInterval(interval);
+            }
+          }, 200);
+          
+          console.log('[VM Extractor] Monitoring for video elements...');
+        })();
+      `;
+      
+      // Create VM HTML with extractor
+      const vmHTML = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>body { margin: 0; background: #000; overflow: hidden; }</style>
+        </head>
+        <body>
+          <iframe 
+            id="embed" 
+            src="${EMBED_URL}"
+            style="width:100%;height:100vh;border:none"
+            allow="autoplay; encrypted-media"
+          ></iframe>
+          <script>${extractorScript}</script>
+        </body>
+        </html>
+      `;
+      
+      // Play video with source
+      function playVideo(source) {
+        console.log('[VM] Playing video:', source);
+        loading.style.display = 'none';
+        videoPlayer.style.display = 'block';
+        
+        // Check if HLS
+        if (source.url.includes('.m3u8')) {
+          if (Hls.isSupported()) {
+            const hls = new Hls({
+              debug: false,
+              enableWorker: true,
+            });
+            hls.loadSource(source.url);
+            hls.attachMedia(videoPlayer);
+            hls.on(Hls.Events.MANIFEST_PARSED, function() {
+              videoPlayer.play().catch(e => console.log('[VM] Autoplay prevented:', e));
+            });
+            console.log('[VM] HLS.js initialized');
+          } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+            videoPlayer.src = source.url;
+            videoPlayer.play().catch(e => console.log('[VM] Autoplay prevented:', e));
+            console.log('[VM] Native HLS playback');
+          } else {
+            console.error('[VM] HLS not supported');
+            showError('HLS playback not supported in this browser');
+            return;
+          }
+        } else {
+          // Direct MP4 or other
+          videoPlayer.src = source.url;
+          videoPlayer.play().catch(e => console.log('[VM] Autoplay prevented:', e));
+        }
+        
+        status.textContent = '✅ Video loaded';
+        setTimeout(() => { status.style.display = 'none'; }, 3000);
+      }
+      
+      function showError(message) {
+        status.textContent = '❌ ' + message;
+        status.classList.add('error-msg');
+        loading.innerHTML = '<p style="color:#fff">' + message + '</p><p style="color:#fff;font-size:12px;margin-top:10px">Try refreshing or use a different source</p>';
+      }
+      
+      // Listen for extracted video sources
+      window.addEventListener('message', function(event) {
+        if (event.data.type === 'VIDEO_EXTRACTED') {
+          console.log('[VM] Video extracted successfully:', event.data.sources);
+          
+          // Use first valid source (prefer m3u8, then mp4)
+          const hlsSource = event.data.sources.find(s => s.url.includes('.m3u8'));
+          const mp4Source = event.data.sources.find(s => s.url.includes('.mp4'));
+          const source = hlsSource || mp4Source || event.data.sources[0];
+          
+          if (source && source.url) {
+            playVideo(source);
+          } else {
+            showError('No valid video source found');
+          }
+        } else if (event.data.type === 'EXTRACTION_FAILED') {
+          console.error('[VM] Extraction failed:', event.data.error);
+          showError('Could not extract video source');
+        }
+      });
+      
+      // Initialize VM
+      setTimeout(() => {
+        console.log('[VM] Launching isolated extraction environment...');
+        vmFrame.srcdoc = vmHTML;
+        
+        // Timeout fallback
+        setTimeout(() => {
+          if (videoPlayer.style.display === 'none') {
+            console.error('[VM] Global timeout - extraction took too long');
+            showError('Extraction timeout');
+          }
+        }, TIMEOUT);
+      }, 100);
+      
+      console.log('[VM] Ready. All redirects will be ignored, only video will be extracted.');
+    })();
+  </script>
+</body>
+</html>

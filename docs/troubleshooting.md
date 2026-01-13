@@ -1,3 +1,4 @@
+
 # Troubleshooting Guide
 
 Common issues and their solutions when working with Tatakai.

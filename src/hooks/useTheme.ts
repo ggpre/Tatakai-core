@@ -446,9 +446,9 @@ export function useTheme() {
   const [theme, setThemeState] = useState<Theme>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem(THEME_KEY) as Theme | null;
-      return stored && THEME_COLORS[stored] ? stored : 'midnight';
+      return stored && THEME_COLORS[stored] ? stored : 'cherry-blossom';
     }
-    return 'midnight';
+    return 'cherry-blossom';
   });
 
   const applyTheme = useCallback((themeName: Theme) => {

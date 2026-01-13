@@ -1,5 +1,5 @@
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { useAnimeInfo, useEpisodes } from "@/hooks/useAnimeData";
+import { useAnimeInfo, useEpisodes, useNextEpisodeSchedule } from "@/hooks/useAnimeData";
 import { useAnimeSeasons } from "@/hooks/useAnimeSeasons";
 import { Background } from "@/components/layout/Background";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -13,6 +13,7 @@ import { RatingsSection } from "@/components/anime/RatingsSection";
 import { WatchlistButton } from "@/components/anime/WatchlistButton";
 import { ShareButton } from "@/components/anime/ShareButton";
 import { AddToPlaylistButton } from "@/components/playlist/AddToPlaylistButton";
+import { NextEpisodeSchedule } from "@/components/anime/NextEpisodeSchedule";
 import { ArrowLeft, Play, Star, Calendar, Clock, Film, Tv, Layers } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import { getProxiedImageUrl } from "@/lib/api";
@@ -24,6 +25,7 @@ export default function AnimePage() {
   const { data: animeData, isLoading: loadingInfo } = useAnimeInfo(animeId);
   const { data: episodesData, isLoading: loadingEpisodes } = useEpisodes(animeId);
   const { data: seasons = [], isLoading: loadingSeasons } = useAnimeSeasons(animeId);
+  const { data: nextEpisodeSchedule } = useNextEpisodeSchedule(animeId);
 
   // Auto-select episode 1 when clicking watch
   const handleWatchNow = () => {
@@ -236,6 +238,16 @@ export default function AnimePage() {
         </VideoBackground>
 
         <main className="relative z-10 pl-6 md:pl-32 pr-6 max-w-[1800px] mx-auto pb-24 md:pb-6">
+          {/* Next Episode Schedule - for airing anime */}
+          {moreInfo.status === 'Currently Airing' && nextEpisodeSchedule?.airingISOTimestamp && (
+            <NextEpisodeSchedule
+              animeId={animeId!}
+              animeName={info.name}
+              airingTime={nextEpisodeSchedule.airingISOTimestamp}
+              nextEpisodeNumber={(info.stats.episodes.sub || info.stats.episodes.dub || 0) + 1}
+            />
+          )}
+
           {/* Episodes */}
           <section className="mb-16">
             <h2 className="font-display text-2xl font-semibold mb-6">Episodes</h2>

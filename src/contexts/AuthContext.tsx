@@ -66,6 +66,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (profileData) {
       setProfile(profileData);
+      // Set admin status from profile
+      const adminStatus = profileData.is_admin || false;
+      setIsAdmin(adminStatus);
       // Check if user is banned
       if (profileData.is_banned) {
         setIsBanned(true);
@@ -76,6 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } else {
       setProfile(null);
+      setIsAdmin(false);
       setIsBanned(false);
       setBanReason(null);
     }
@@ -86,9 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .eq('user_id', userId);
     
     if (rolesData) {
-      const hasAdminRole = rolesData.some(r => r.role === 'admin');
-      const hasModRole = rolesData.some(r => r.role === 'moderator' || r.role === 'admin');
-      setIsAdmin(prev => prev || hasAdminRole);
+      const hasModRole = rolesData.some(r => r.role === 'moderator');
       setIsModerator(prev => prev || hasModRole);
     }
   };

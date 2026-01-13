@@ -19,10 +19,30 @@ export function useAnimeSeasons(animeId: string | undefined) {
       if (!animeId) return [];
 
       try {
-        // First try to get seasons from the anime info
-        const res = await fetch(`https://api.anime-world.co/api/v2/hianime/anime/${animeId}`);
-        if (!res.ok) throw new Error('Failed to fetch');
-        
+        // Try the local proxy endpoint first (avoids CORS issues in browser)
+        const proxyUrl = `/api/proxy/aniwatch/anime/${animeId}`;
+        const directUrl = `https://aniwatch-api-taupe-eight.vercel.app/api/v2/hianime/anime/${animeId}`;
+
+        let res: Response | null = null;
+        let attemptedUrl = proxyUrl;
+
+        try {
+          res = await fetch(proxyUrl, { credentials: 'same-origin' });
+        } catch (e) {
+          // If proxy fails (dev server not configured or serverless not deployed), try direct fetch
+          attemptedUrl = directUrl;
+          res = await fetch(directUrl);
+        }
+
+        if (!res || !res.ok) {
+          const text = await (res ? res.text() : Promise.resolve('No response'));
+          const err = new Error(`Failed to fetch seasons: ${res ? `${res.status} ${res.statusText}` : 'no response'} - ${text}`);
+          // Log structured error for admin visibility
+          const { logger } = await import('@/lib/logger');
+          void logger.error(err, { url: attemptedUrl, animeId, status: res ? res.status : null, text });
+          return [];
+        }
+
         const data = await res.json();
         
         // Check if there are seasons in the related animes
@@ -77,7 +97,8 @@ export function useAnimeSeasons(animeId: string | undefined) {
 
         return seasons;
       } catch (error) {
-        console.error('Failed to fetch seasons:', error);
+        const { logger } = await import('@/lib/logger');
+        void logger.error(new Error('Failed to fetch seasons'), { error, animeId });
         return [];
       }
     },

@@ -64,8 +64,8 @@ export function ShareButton({ animeId, animeName, animePoster, description }: Sh
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon" className="rounded-full">
-          <Share2 className="w-4 h-4" />
+        <Button variant="outline" size="icon" className="h-14 w-14 rounded-full">
+          <Share2 className="w-5 h-5" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">

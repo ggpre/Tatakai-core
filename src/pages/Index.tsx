@@ -13,6 +13,10 @@ import { ContinueWatching } from "@/components/anime/ContinueWatching";
 import { LocalContinueWatching } from "@/components/anime/LocalContinueWatching";
 import { PlaylistSection } from "@/components/anime/PlaylistSection";
 import { UpcomingAnimeSection } from "@/components/anime/UpcomingAnimeSection";
+import { InfiniteHomeSections } from "@/components/anime/InfiniteHomeSections";
+import { TrendingForumSection } from "@/components/anime/TrendingForumSection";
+import { DiscordSection } from "@/components/home/DiscordSection";
+import { AppDownloadSection } from "@/components/home/AppDownloadSection";
 import { HeroSkeleton, CardSkeleton } from "@/components/ui/skeleton-custom";
 import { Heart, Sparkles } from "lucide-react";
 
@@ -92,12 +96,28 @@ const Index = () => {
             {/* Genre Cloud */}
             <GenreCloud genres={data.genres} />
 
+            {/* Trending Forum Discussions */}
+            <TrendingForumSection />
+
+            {/* Join Discord */}
+            <div className="mb-24">
+              <DiscordSection />
+            </div>
+
             {/* Most Favorite */}
             <AnimeGrid 
               animes={data.mostFavoriteAnimes.slice(0, 6)} 
               title="Most Favorite"
               icon={<Sparkles className="w-5 h-5 text-amber" />}
             />
+
+            {/* Download App */}
+            <div className="mb-24">
+              <AppDownloadSection />
+            </div>
+
+            {/* Infinite Scrolling Genre Sections */}
+            <InfiniteHomeSections />
           </>
         ) : null}
       </main>

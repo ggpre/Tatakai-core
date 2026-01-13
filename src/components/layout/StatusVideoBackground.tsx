@@ -24,7 +24,7 @@ export function StatusVideoBackground({
   }, []);
 
   return (
-    <div className="fixed inset-0 w-full h-full overflow-hidden -z-10">
+    <div className="fixed inset-0 w-full h-full overflow-hidden" style={{ zIndex: -1 }}>
       {source && (
         <video
           ref={videoRef}

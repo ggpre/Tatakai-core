@@ -12,14 +12,16 @@ import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/hooks/useTheme';
 import { useUpdateProfilePrivacy } from '@/hooks/useProfileFeatures';
+import { useChangelog } from '@/hooks/useAdminFeatures';
+import { useClearAllWatchHistory } from '@/hooks/useWatchHistory';
 import { getMALAuthUrl, getAniListAuthUrl, disconnectMAL, disconnectAniList } from '@/lib/externalIntegrations';
 import { toast } from 'sonner';
 import { 
-  ArrowLeft, Palette, Film, Monitor, Info, Link2, Eye, EyeOff, Globe, CheckCircle, ExternalLink, Shield, History
+  ArrowLeft, Palette, Film, Monitor, Info, Link2, Eye, EyeOff, Globe, CheckCircle, ExternalLink, Shield, History, Trash2, Search
 } from 'lucide-react';
 
-// Changelog entries - most recent first
-const CHANGELOG = [
+// Fallback changelog entries if database is empty
+const FALLBACK_CHANGELOG = [
   {
     version: '2.0.0',
     date: '2026-01-08',
@@ -66,7 +68,15 @@ export default function SettingsPage() {
   const { user, profile, refreshProfile } = useAuth();
   const { themes } = useTheme();
   const updatePrivacy = useUpdateProfilePrivacy();
+  const clearHistory = useClearAllWatchHistory();
+  const { data: dbChangelog = [], isLoading: loadingChangelog } = useChangelog();
   const [isPublic, setIsPublic] = useState(true);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  
+  // Use database changelog if available, otherwise fallback
+  const CHANGELOG = dbChangelog.length > 0 
+    ? dbChangelog.map(c => ({ version: c.version, date: c.release_date, changes: c.changes }))
+    : FALLBACK_CHANGELOG;
 
   useEffect(() => {
     if (profile) {
@@ -112,6 +122,16 @@ export default function SettingsPage() {
       toast.success('AniList disconnected');
     } catch {
       toast.error('Failed to disconnect');
+    }
+  };
+
+  const handleClearHistory = async () => {
+    try {
+      await clearHistory.mutateAsync();
+      toast.success('All watch history cleared');
+      setShowClearConfirm(false);
+    } catch {
+      toast.error('Failed to clear history');
     }
   };
 
@@ -252,6 +272,7 @@ export default function SettingsPage() {
                       disabled={updatePrivacy.isPending}
                     />
                   </div>
+                  
                   <div className="p-4 rounded-xl bg-muted/20 border border-muted">
                     <p className="text-sm text-muted-foreground">
                       When your profile is public, other users can view your:
@@ -262,6 +283,85 @@ export default function SettingsPage() {
                       <li>Watch history and progress</li>
                       <li>Tier lists you've created</li>
                     </ul>
+                  </div>
+
+                  {/* Clear Watch History */}
+                  <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/20">
+                    <div className="flex items-start gap-4">
+                      <Trash2 className="w-5 h-5 text-destructive mt-1" />
+                      <div className="flex-1">
+                        <p className="font-medium mb-1">Clear Watch History</p>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Permanently delete all your watch history. This action cannot be undone.
+                        </p>
+                        {showClearConfirm ? (
+                          <div className="space-y-3">
+                            <div className="p-3 rounded-lg bg-destructive/20 border border-destructive">
+                              <p className="text-sm font-medium text-destructive">
+                                Are you sure? This will permanently delete all your watch history and progress.
+                              </p>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={handleClearHistory}
+                                disabled={clearHistory.isPending}
+                                className="gap-2"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                {clearHistory.isPending ? 'Clearing...' : 'Yes, Delete All'}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setShowClearConfirm(false)}
+                                disabled={clearHistory.isPending}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => setShowClearConfirm(true)}
+                            className="gap-2"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Clear All History
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Clear Search History */}
+                    <div className="flex items-start gap-4 pt-6 border-t border-border/50">
+                      <Search className="w-5 h-5 text-destructive mt-1" />
+                      <div className="flex-1">
+                        <p className="font-medium mb-1">Clear Search History</p>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Delete all your search history stored locally on this device.
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            try {
+                              localStorage.removeItem('tatakai_search_history');
+                              toast.success('Search history cleared');
+                            } catch {
+                              toast.error('Failed to clear search history');
+                            }
+                          }}
+                          className="gap-2"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Clear Search History
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -412,6 +512,37 @@ export default function SettingsPage() {
                   <div className="p-4 rounded-xl bg-secondary/10 text-center">
                     <p className="text-2xl font-bold text-secondary">∞</p>
                     <p className="text-sm text-muted-foreground">Anime</p>
+                  </div>
+                </div>
+                
+                {/* Legal Links */}
+                <div className="p-4 rounded-xl bg-muted/30">
+                  <p className="font-medium mb-3">Legal & Policies</p>
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate('/terms')}
+                      className="justify-start"
+                    >
+                      Terms & Conditions
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate('/dmca')}
+                      className="justify-start"
+                    >
+                      DMCA Policy
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate('/suggestions')}
+                      className="justify-start"
+                    >
+                      Send Feedback
+                    </Button>
                   </div>
                 </div>
               </div>

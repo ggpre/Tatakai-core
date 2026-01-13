@@ -361,6 +361,19 @@ export async function fetchGenreAnimes(
   return apiGet(`/genre/${genre}?page=${page}`);
 }
 
+// Fetch next episode schedule for an anime
+export interface NextEpisodeSchedule {
+  airingISOTimestamp: string | null;
+  airingTimestamp: number | null;
+  secondsUntilAiring: number | null;
+}
+
+export async function fetchNextEpisodeSchedule(
+  animeId: string
+): Promise<NextEpisodeSchedule> {
+  return apiGet(`/anime/${animeId}/next-episode-schedule`);
+}
+
 // Fetch sources from WatchAnimeWorld
 export async function fetchWatchanimeworldSources(
   episodeUrl: string
@@ -391,4 +404,83 @@ export async function fetchWatchanimeworldSources(
   }
   
   return response.json();
+}
+
+// Fetch anime data from AnimeHindiDubbed
+export async function fetchAnimeHindiDubbedData(
+  slug: string
+): Promise<{
+  title: string;
+  slug: string;
+  thumbnail?: string;
+  description?: string;
+  rating?: string;
+  servers: {
+    filemoon: Array<{ name: string; url: string }>;
+    servabyss: Array<{ name: string; url: string }>;
+    vidgroud: Array<{ name: string; url: string }>;
+  };
+}> {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  if (!supabaseUrl) {
+    throw new Error('Supabase URL not configured');
+  }
+
+  const apikey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  const params = new URLSearchParams({ action: 'anime', slug });
+  if (apikey) params.set('apikey', apikey);
+
+  const url = `${supabaseUrl}/functions/v1/animehindidubbed-scraper?${params.toString()}`;
+  
+  const headers: Record<string, string> = {
+    'Accept': 'application/json',
+  };
+  if (apikey) {
+    headers['apikey'] = apikey;
+    headers['Authorization'] = `Bearer ${apikey}`;
+  }
+
+  const response = await fetch(url, { headers });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch AnimeHindiDubbed data: ${response.status}`);
+  }
+  
+  return response.json();
+}
+
+// Extract video URL from embed page using Puppeteer service
+export async function extractEmbedVideo(
+  embedUrl: string,
+  timeout: number = 30000
+): Promise<{
+  success: boolean;
+  sources?: Array<{
+    url: string;
+    type: 'hls' | 'mp4' | 'unknown';
+    quality?: string;
+  }>;
+  error?: string;
+}> {
+  const extractorUrl = import.meta.env.VITE_EXTRACTOR_SERVICE_URL || 'http://localhost:3001';
+  
+  try {
+    const response = await fetch(`${extractorUrl}/extract`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: embedUrl, timeout })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Extractor service error: ${response.status}`);
+    }
+    
+    return response.json();
+  } catch (error) {
+    console.error('Extract embed video failed:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
 }

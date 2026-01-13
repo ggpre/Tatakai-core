@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { moderateContent, getViolationMessage } from '@/lib/autoModeration';
 
 interface CommentProfile {
   display_name: string | null;
@@ -18,6 +19,7 @@ interface Comment {
   parent_id: string | null;
   likes_count: number;
   is_spoiler: boolean;
+  is_pinned: boolean;
   created_at: string;
   updated_at: string;
   profile?: CommentProfile;
@@ -139,13 +141,20 @@ export function useAddComment() {
       parentId?: string;
       isSpoiler?: boolean;
     }) => {
+      // Auto-moderate content
+      const moderation = moderateContent(content);
+      
+      if (!moderation.isAllowed) {
+        throw new Error(getViolationMessage(moderation.violations));
+      }
+
       const { data, error } = await supabase
         .from('comments')
         .insert({
           user_id: user!.id,
           anime_id: animeId,
           episode_id: episodeId,
-          content,
+          content: moderation.sanitizedContent,
           parent_id: parentId,
           is_spoiler: isSpoiler,
         })
@@ -162,8 +171,8 @@ export function useAddComment() {
       }
       toast.success('Comment posted');
     },
-    onError: () => {
-      toast.error('Failed to post comment');
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to post comment');
     },
   });
 }
@@ -219,6 +228,44 @@ export function useLikeComment() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['comments'] });
       queryClient.invalidateQueries({ queryKey: ['replies'] });
+    },
+  });
+}
+
+// Pin/Unpin comment (admin only)
+export function usePinComment() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  
+  return useMutation({
+    mutationFn: async ({ commentId, isPinned, isAdmin }: { commentId: string; isPinned: boolean; isAdmin: boolean }) => {
+      if (!user || !isAdmin) throw new Error('Admin access required');
+
+      const { error } = await supabase
+        .from('comments')
+        .update({ is_pinned: isPinned })
+        .eq('id', commentId);
+
+      if (error) throw error;
+
+      // Log admin action
+      await supabase.from('admin_logs').insert({
+        user_id: user.id,
+        action: isPinned ? 'pin_comment' : 'unpin_comment',
+        entity_type: 'comment',
+        entity_id: commentId,
+      });
+
+      return commentId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['comments'] });
+      queryClient.invalidateQueries({ queryKey: ['replies'] });
+      queryClient.invalidateQueries({ queryKey: ['admin_logs'] });
+      toast.success('Comment pin status updated');
+    },
+    onError: () => {
+      toast.error('Failed to update comment pin status');
     },
   });
 }

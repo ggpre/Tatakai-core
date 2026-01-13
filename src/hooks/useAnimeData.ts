@@ -7,6 +7,7 @@ import {
   fetchStreamingSources,
   searchAnime,
   fetchGenreAnimes,
+  fetchNextEpisodeSchedule,
 } from "@/lib/api";
 
 export function useHomeData() {
@@ -70,5 +71,15 @@ export function useGenreAnimes(genre: string | undefined, page: number = 1) {
     queryFn: () => fetchGenreAnimes(genre!, page),
     enabled: !!genre,
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useNextEpisodeSchedule(animeId: string | undefined) {
+  return useQuery({
+    queryKey: ["next-episode-schedule", animeId],
+    queryFn: () => fetchNextEpisodeSchedule(animeId!),
+    enabled: !!animeId,
+    staleTime: 5 * 60 * 1000,
+    retry: false, // Don't retry if anime doesn't have schedule
   });
 }

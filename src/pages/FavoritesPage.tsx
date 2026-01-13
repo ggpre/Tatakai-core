@@ -4,7 +4,7 @@ import { MobileNav } from "@/components/layout/MobileNav";
 import { AnimeCardWithPreview } from "@/components/anime/AnimeCardWithPreview";
 import { Skeleton } from "@/components/ui/skeleton-custom";
 import { usePersonalizedRecommendations, useGenrePreferences } from "@/hooks/useRecommendations";
-import { useWatchlist } from "@/hooks/useWatchlist";
+import { useWatchlist, useBulkRemoveFromWatchlist } from "@/hooks/useWatchlist";
 import { useAuth } from "@/contexts/AuthContext";
 import { Heart, Sparkles, TrendingUp, BookOpen, CheckCircle, Clock, Pause, X, Filter } from "lucide-react";
 import { useState } from "react";
@@ -37,10 +37,14 @@ export default function FavoritesPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('for-you');
+  const [sortBy, setSortBy] = useState<'recent' | 'alpha' | 'favorites'>('recent');
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   
   const { data: recommendations, isLoading: loadingRecs } = usePersonalizedRecommendations(24);
   const { data: genrePrefs } = useGenrePreferences();
   const { data: watchlist, isLoading: loadingWatchlist } = useWatchlist();
+  const bulkRemove = useBulkRemoveFromWatchlist();
   
   // Filter watchlist by status
   const filteredWatchlist = watchlist?.filter(item => {
@@ -103,30 +107,66 @@ export default function FavoritesPage() {
             </div>
           </div>
 
-          {/* Tabs */}
-          <div className="flex flex-wrap gap-2 overflow-x-auto pb-2">
-            {TABS.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap ${
-                  activeTab === tab.id
-                    ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25'
-                    : 'bg-card/60 hover:bg-card text-muted-foreground hover:text-foreground border border-border/30'
-                }`}
+          {/* Tabs and actions */}
+          <div className="flex items-center justify-between gap-4 mb-2">
+            <div className="flex flex-wrap gap-2 overflow-x-auto pb-2">
+              {TABS.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap ${
+                    activeTab === tab.id
+                      ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25'
+                      : 'bg-card/60 hover:bg-card text-muted-foreground hover:text-foreground border border-border/30'
+                  }`}
+                >
+                  {tab.icon}
+                  {tab.label}
+                  {tab.id !== 'for-you' && watchlist && (
+                    <span className="ml-1 text-xs opacity-70">
+                      ({tab.id === 'all' 
+                        ? watchlist.length 
+                        : watchlist.filter(w => w.status === STATUS_MAP[tab.id]).length
+                      })
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="bg-card/80 text-sm px-3 py-2 rounded-lg border border-border/30"
               >
-                {tab.icon}
-                {tab.label}
-                {tab.id !== 'for-you' && watchlist && (
-                  <span className="ml-1 text-xs opacity-70">
-                    ({tab.id === 'all' 
-                      ? watchlist.length 
-                      : watchlist.filter(w => w.status === STATUS_MAP[tab.id]).length
-                    })
-                  </span>
-                )}
+                <option value="recent">Recently Updated</option>
+                <option value="alpha">Alphabetical</option>
+                <option value="favorites">Most Favorited</option>
+              </select>
+
+              <button
+                onClick={() => setSelectMode(v => !v)}
+                className={`px-3 py-2 rounded-lg text-sm ${selectMode ? 'bg-primary text-primary-foreground' : 'bg-card/80 text-muted-foreground'}`}
+              >
+                {selectMode ? 'Cancel' : 'Select'}
               </button>
-            ))}
+
+              {selectMode && (
+                <button
+                  onClick={async () => {
+                    if (selectedIds.length === 0) return;
+                    if (!confirm(`Delete ${selectedIds.length} items from your watchlist?`)) return;
+                    await bulkRemove.mutateAsync(selectedIds);
+                    setSelectedIds([]);
+                    setSelectMode(false);
+                  }}
+                  className="px-3 py-2 rounded-lg bg-destructive text-destructive-foreground text-sm"
+                >
+                  Delete Selected
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -186,14 +226,14 @@ export default function FavoritesPage() {
             {filteredWatchlist.map(item => (
               <div 
                 key={item.id} 
-                onClick={() => navigate(`/anime/${item.anime_id}`)}
-                className="relative cursor-pointer group"
+                className="relative group"
               >
                 <div className="aspect-[3/4] rounded-2xl overflow-hidden border-2 border-border/40 bg-card/80 backdrop-blur-sm shadow-lg hover:shadow-2xl hover:shadow-primary/20 transition-all duration-300 hover:-translate-y-1">
                   <img
                     src={getProxiedImageUrl(item.anime_poster || '')}
                     alt={item.anime_name}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    onClick={() => navigate(`/anime/${item.anime_id}`)}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent opacity-90 group-hover:opacity-70 transition-opacity" />
                   
@@ -202,10 +242,21 @@ export default function FavoritesPage() {
                     {item.status.replace('_', ' ')}
                   </div>
                   
-                  <div className="absolute bottom-0 left-0 right-0 p-4">
+                  <div className="absolute bottom-0 left-0 right-0 p-4 flex items-center justify-between gap-2">
                     <h4 className="font-bold text-sm md:text-base line-clamp-2 group-hover:text-primary transition-colors drop-shadow-lg">
                       {item.anime_name}
                     </h4>
+                    {selectMode && (
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(item.anime_id)}
+                        onChange={(e) => {
+                          if (e.target.checked) setSelectedIds(s => [...s, item.anime_id]);
+                          else setSelectedIds(s => s.filter(id => id !== item.anime_id));
+                        }}
+                        className="w-4 h-4"
+                      />
+                    )}
                   </div>
                 </div>
               </div>

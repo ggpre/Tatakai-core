@@ -112,3 +112,23 @@ export function useUpdateWatchHistory() {
     },
   });
 }
+
+export function useClearAllWatchHistory() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from('watch_history')
+        .delete()
+        .eq('user_id', user!.id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['watch_history'] });
+      queryClient.invalidateQueries({ queryKey: ['continue_watching'] });
+    },
+  });
+}

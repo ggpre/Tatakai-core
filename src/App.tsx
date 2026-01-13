@@ -9,6 +9,9 @@ import { useSmartTV } from "@/hooks/useSmartTV";
 import { useTheme } from "@/hooks/useTheme";
 import { useMaintenanceMode } from "@/hooks/useAdminMessages";
 import { usePageTracking } from "@/hooks/useAnalytics";
+import { PopupDisplay } from "@/components/layout/PopupDisplay";
+import { Footer } from "@/components/layout/Footer";
+import { OfflineBanner } from '@/components/layout/OfflineBanner';
 import Index from "./pages/Index";
 import AnimePage from "./pages/AnimePage";
 import WatchPage from "./pages/WatchPage";
@@ -29,7 +32,17 @@ import BannedPage from "./pages/BannedPage";
 import ErrorPage from "./pages/ErrorPage";
 import TierListPage, { TierListViewPage } from "./pages/TierListPage";
 import PlaylistsPage, { PlaylistViewPage } from "./pages/PlaylistPage";
+import PublicPlaylistPage from "./pages/PublicPlaylistPage";
 import CommunityPage from "./pages/CommunityPage";
+import ForumPostPage from "./pages/ForumPostPage";
+import ForumNewPostPage from "./pages/ForumNewPostPage";
+import CollectionsPage from "./pages/CollectionsPage";
+import SuggestionsPage from "./pages/SuggestionsPage";
+import TermsPage from "./pages/TermsPage";
+import DMCAPage from "./pages/DMCAPage";
+import PrivacyPage from "./pages/PrivacyPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
+import UpdatePasswordPage from "./pages/UpdatePasswordPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -119,7 +132,10 @@ function AppContent() {
     <>
       <Toaster />
       <Sonner />
+      {/* Offline banner lives at top level so it can be seen anywhere */}
+      <OfflineBanner />
       <BrowserRouter>
+        <PopupDisplay />
         <Routes>
           {/* Status pages - only accessible when in appropriate state */}
           <Route path="/maintenance" element={
@@ -151,21 +167,34 @@ function AppContent() {
           <Route path="/search" element={<ProtectedRoute><SearchPage /></ProtectedRoute>} />
           <Route path="/genre/:genre" element={<ProtectedRoute><GenrePage /></ProtectedRoute>} />
           <Route path="/trending" element={<ProtectedRoute><TrendingPage /></ProtectedRoute>} />
+          <Route path="/collections" element={<ProtectedRoute><CollectionsPage /></ProtectedRoute>} />
           <Route path="/favorites" element={<ProtectedRoute><FavoritesPage /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
           <Route path="/status" element={<ProtectedRoute><StatusPage /></ProtectedRoute>} />
           <Route path="/download" element={<ProtectedRoute><DownloadPage /></ProtectedRoute>} />
+          <Route path="/suggestions" element={<ProtectedRoute><SuggestionsPage /></ProtectedRoute>} />
+          <Route path="/terms" element={<ProtectedRoute><TermsPage /></ProtectedRoute>} />
+          <Route path="/dmca" element={<ProtectedRoute><DMCAPage /></ProtectedRoute>} />
+          <Route path="/privacy" element={<ProtectedRoute><PrivacyPage /></ProtectedRoute>} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/update-password" element={<UpdatePasswordPage />} />
           <Route path="/community" element={<ProtectedRoute><CommunityPage /></ProtectedRoute>} />
+          <Route path="/community/forum/new" element={<ProtectedRoute><ForumNewPostPage /></ProtectedRoute>} />
+          <Route path="/community/forum/:postId" element={<ProtectedRoute><ForumPostPage /></ProtectedRoute>} />
           <Route path="/tierlists" element={<ProtectedRoute><TierListPage /></ProtectedRoute>} />
           <Route path="/tierlist/:shareCode" element={<ProtectedRoute><TierListViewPage /></ProtectedRoute>} />
           <Route path="/playlists" element={<ProtectedRoute><PlaylistsPage /></ProtectedRoute>} />
+          <Route path="/p/:shareSlug" element={<PublicPlaylistPage />} />
           <Route path="/playlist/:playlistId" element={<ProtectedRoute><PlaylistViewPage /></ProtectedRoute>} />
           <Route path="/user/:username" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
           <Route path="/:atUsername" element={<ProtectedRoute><AtUsernameHandler /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <div className="mt-24">
+          <Footer />
+        </div>
       </BrowserRouter>
     </>
   );

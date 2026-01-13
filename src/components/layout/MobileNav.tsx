@@ -3,6 +3,7 @@ import { NavIcon } from "@/components/ui/NavIcon";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,13 +34,14 @@ export function MobileNav() {
       {/* Favorites/Trending Dropdown */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className="focus:outline-none">
-            <NavIcon 
-              icon={Heart} 
-              active={isActive("/favorites") || isActive("/trending")} 
-              onClick={(e) => e.preventDefault()}
-            />
-          </button>
+          <div className="nav-icon group relative cursor-pointer focus:outline-none">
+            <Heart className={cn(
+              "w-5 h-5",
+              isActive("/favorites") || isActive("/trending") 
+                ? "text-primary" 
+                : "text-muted-foreground hover:text-foreground"
+            )} />
+          </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="center" side="top" className="mb-2">
           <DropdownMenuItem onClick={() => navigate("/favorites")}>

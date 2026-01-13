@@ -62,23 +62,26 @@ export function useAnimeViewCount(animeId: string | undefined) {
 
 // Fetch trending anime by views
 // Note: Returns empty array if function doesn't exist yet (migration pending)
-export function useTrendingAnime(limit: number = 20) {
+export function useTrendingAnime(limit: number = 20, window: 'today' | 'week' | 'month' | 'all' = 'week') {
   return useQuery({
-    queryKey: ['trending', limit],
+    queryKey: ['trending', limit, window],
     queryFn: async (): Promise<TrendingAnime[]> => {
       try {
         const { data, error } = await (supabase as any)
-          .rpc('get_trending_anime', { p_limit: limit });
+          .rpc('get_trending_anime', { p_limit: limit, p_window: window });
         
         if (error) {
           // Function might not exist yet
           if (error.code === '42883') return [];
-          console.error('Error fetching trending:', error);
+          const { logger } = await import('@/lib/logger');
+          void logger.error('Error fetching trending:', error);
           return [];
         }
         
         return (data as TrendingAnime[]) || [];
-      } catch {
+      } catch (e) {
+        const { logger } = await import('@/lib/logger');
+        void logger.error('Exception fetching trending:', e);
         return [];
       }
     },
@@ -185,4 +188,56 @@ export function formatViewCount(count: number): string {
     return `${(count / 1000).toFixed(1)}K`;
   }
   return count.toString();
+}
+
+// Fetch aggregated metrics for a single anime
+export function useAnimeMetrics(animeId: string | undefined) {
+  return useQuery({
+    queryKey: ['anime_metrics', animeId],
+    queryFn: async () => {
+      if (!animeId) return null;
+      try {
+        const { data, error } = await (supabase as any).rpc('get_anime_metrics', { p_anime_id: animeId });
+        if (error) {
+          if (error.code === '42883') return null;
+          const { logger } = await import('@/lib/logger');
+          void logger.error('Error fetching anime metrics:', error);
+          return null;
+        }
+        return data?.[0] ?? null;
+      } catch (e) {
+        const { logger } = await import('@/lib/logger');
+        void logger.error('Exception fetching anime metrics:', e);
+        return null;
+      }
+    },
+    enabled: !!animeId,
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+// Recommendations for a user (simple co-occurrence based)
+export function useRecommendationsForUser(userId: string | undefined, limit = 10) {
+  return useQuery({
+    queryKey: ['recommendations', userId, limit],
+    queryFn: async () => {
+      if (!userId) return [];
+      try {
+        const { data, error } = await (supabase as any).rpc('get_recommendations_for_user', { p_user_id: userId, p_limit: limit });
+        if (error) {
+          if (error.code === '42883') return [];
+          const { logger } = await import('@/lib/logger');
+          void logger.error('Error fetching recommendations:', error);
+          return [];
+        }
+        return (data as any[]) || [];
+      } catch (e) {
+        const { logger } = await import('@/lib/logger');
+        void logger.error('Exception fetching recommendations:', e);
+        return [];
+      }
+    },
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 5,
+  });
 }

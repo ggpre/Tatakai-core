@@ -637,6 +637,210 @@ export type Database = {
           },
         ]
       }
+      forum_posts: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          content: string
+          content_type: string
+          anime_id: string | null
+          anime_name: string | null
+          anime_poster: string | null
+          playlist_id: string | null
+          tierlist_id: string | null
+          flair: string | null
+          is_spoiler: boolean
+          is_pinned: boolean
+          is_locked: boolean
+          image_url: string | null
+          is_approved: boolean
+          upvotes: number
+          downvotes: number
+          comments_count: number
+          views_count: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          content: string
+          content_type?: string
+          anime_id?: string | null
+          anime_name?: string | null
+          anime_poster?: string | null
+          playlist_id?: string | null
+          tierlist_id?: string | null
+          flair?: string | null
+          is_spoiler?: boolean
+          is_pinned?: boolean
+          is_locked?: boolean
+          image_url?: string | null
+          is_approved?: boolean
+          upvotes?: number
+          downvotes?: number
+          comments_count?: number
+          views_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          content?: string
+          content_type?: string
+          anime_id?: string | null
+          anime_name?: string | null
+          anime_poster?: string | null
+          playlist_id?: string | null
+          tierlist_id?: string | null
+          flair?: string | null
+          is_spoiler?: boolean
+          is_pinned?: boolean
+          is_locked?: boolean
+          image_url?: string | null
+          is_approved?: boolean
+          upvotes?: number
+          downvotes?: number
+          comments_count?: number
+          views_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      forum_comments: {
+        Row: {
+          id: string
+          post_id: string
+          user_id: string
+          content: string
+          parent_id: string | null
+          is_spoiler: boolean
+          upvotes: number
+          downvotes: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          post_id: string
+          user_id: string
+          content: string
+          parent_id?: string | null
+          is_spoiler?: boolean
+          upvotes?: number
+          downvotes?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          post_id?: string
+          user_id?: string
+          content?: string
+          parent_id?: string | null
+          is_spoiler?: boolean
+          upvotes?: number
+          downvotes?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forum_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "forum_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "forum_comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "forum_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      forum_votes: {
+        Row: {
+          id: string
+          user_id: string
+          post_id: string | null
+          comment_id: string | null
+          vote_type: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          post_id?: string | null
+          comment_id?: string | null
+          vote_type: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          post_id?: string | null
+          comment_id?: string | null
+          vote_type?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forum_votes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "forum_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "forum_votes_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "forum_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_logs: {
+        Row: {
+          id: string
+          user_id: string
+          action: string
+          entity_type: string
+          entity_id: string | null
+          details: Json | null
+          ip_address: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          action: string
+          entity_type: string
+          entity_id?: string | null
+          details?: Json | null
+          ip_address?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          action?: string
+          entity_type?: string
+          entity_id?: string | null
+          details?: Json | null
+          ip_address?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -652,6 +856,12 @@ export type Database = {
       increment_tier_list_views: {
         Args: {
           tier_list_id: string
+        }
+        Returns: undefined
+      }
+      increment_forum_post_views: {
+        Args: {
+          post_id: string
         }
         Returns: undefined
       }

@@ -75,7 +75,7 @@ interface SocialLinksEditorProps {
 }
 
 const SOCIAL_PLATFORMS = [
-  { key: 'discord', label: 'Discord', icon: DiscordIcon, placeholder: 'username#1234 or discord.gg/invite', color: '#5865F2' },
+  { key: 'discord', label: 'Discord', icon: DiscordIcon, placeholder: 'discord.gg/invite', color: '#5865F2' },
   { key: 'twitter', label: 'X (Twitter)', icon: TwitterIcon, placeholder: '@username or x.com/username', color: '#000000' },
   { key: 'instagram', label: 'Instagram', icon: InstagramIcon, placeholder: '@username or instagram.com/username', color: '#E4405F' },
   { key: 'mal', label: 'MyAnimeList', icon: MALIcon, placeholder: 'myanimelist.net/profile/username', color: '#2E51A2' },
@@ -273,7 +273,7 @@ export function SocialLinksDisplay({ links }: { links?: SocialLinks }) {
     
     switch (platform.key) {
       case 'discord':
-        if (value.includes('discord.gg')) return `https://${value}`;
+        if (value.includes('discord.gg')) return `https://discord.gg/${value}`;
         return null; // Discord usernames aren't linkable
       case 'twitter':
         if (value.startsWith('@')) value = value.slice(1);

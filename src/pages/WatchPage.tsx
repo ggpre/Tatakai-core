@@ -17,6 +17,7 @@ import { updateLocalContinueWatching, getLocalContinueWatching } from "@/lib/loc
 import { useAuth } from "@/contexts/AuthContext";
 import { useUpdateWatchHistory } from '@/hooks/useWatchHistory';
 import { useViewTracker, useAnimeViewCount, formatViewCount } from '@/hooks/useViews';
+import { useWatchTracking } from '@/hooks/useAnalytics';
 import { getProxiedVideoUrl } from "@/lib/api";
 import {
   ArrowLeft,
@@ -97,6 +98,58 @@ export default function WatchPage() {
   const { data: viewCount } = useAnimeViewCount(animeId);
   useViewTracker(animeId, decodedEpisodeId);
 
+  // Watch time analytics tracking
+  const watchMetadata = useMemo(() => ({
+    animeName: animeData?.anime?.info?.name,
+    animePoster: animeData?.anime?.info?.poster,
+    genres: animeData?.anime?.moreInfo?.genres,
+  }), [animeData]);
+  
+  useWatchTracking(animeId, decodedEpisodeId, watchMetadata);
+
+  // Block navigations to other origins (best-effort). Avoids redirects triggered by embeds/popups.
+  useEffect(() => {
+    const allowedOrigin = window.location.origin;
+    const isAllowed = (url: string | URL | null | undefined) => {
+      if (!url) return true;
+      try {
+        const resolved = new URL(url.toString(), window.location.href);
+        return resolved.origin === allowedOrigin;
+      } catch {
+        return false;
+      }
+    };
+
+    const clickHandler = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+      const anchor = target.closest<HTMLAnchorElement>("a[href]");
+      if (!anchor) return;
+      if (!isAllowed(anchor.href)) {
+        event.preventDefault();
+        event.stopPropagation();
+        console.warn("Blocked outbound navigation", anchor.href);
+      }
+    };
+
+    const originalOpen = window.open;
+    const guardedOpen: typeof window.open = (url: string | URL | undefined, target?: string, features?: string) => {
+      if (url && !isAllowed(url)) {
+        console.warn("Blocked window.open to", url.toString());
+        return null;
+      }
+      return originalOpen.call(window, url, target, features);
+    };
+
+    document.addEventListener("click", clickHandler, true);
+    window.open = guardedOpen;
+
+    return () => {
+      document.removeEventListener("click", clickHandler, true);
+      window.open = originalOpen;
+    };
+  }, []);
+
   const availableServers = useMemo(() => {
     // Filter out hd-1 server completely
     const servers = (category === "sub" ? serversData?.sub : serversData?.dub) || [];
@@ -142,7 +195,7 @@ export default function WatchPage() {
   const nextEpisode =
     currentEpisodeIndex < (episodesData?.episodes.length ?? 0) - 1
       ? episodesData?.episodes[currentEpisodeIndex + 1]
-      : null;
+        : null;
 
   const {
     data: sourcesData,
@@ -206,11 +259,12 @@ export default function WatchPage() {
     );
   }, [sourcesData, subSourcesData, category]);
 
-  // Compute selected embed source for WatchAnimeWorld
+  // Compute selected embed source for WatchAnimeWorld/AnimeHindiDubbed
   const selectedEmbedSource = useMemo(() => {
     if (selectedServerIndex !== -2 || !selectedLangCode || !sourcesData) return null;
+    // Match by langCode - could be embed (iframe) or extracted direct source
     return sourcesData.sources.find(
-      s => s.langCode === selectedLangCode && (s.isEmbed || (!s.isM3U8 && s.needsHeadless))
+      s => s.langCode === selectedLangCode
     ) || null;
   }, [selectedServerIndex, selectedLangCode, sourcesData]);
 
@@ -526,7 +580,7 @@ export default function WatchPage() {
                         </button>
                       ))}
                       
-                      {/* WatchAnimeWorld Language Sources */}
+                      {/* WatchAnimeWorld & AnimeHindiDubbed Language Sources */}
                       {sourcesData?.sources
                         .filter(s => s.language && s.langCode)
                         .reduce((acc: Array<{lang: string, code: string, isDub: boolean, isEmbed: boolean}>, source) => {
@@ -550,7 +604,7 @@ export default function WatchPage() {
                                 s => s.langCode === lang.code
                               );
                               if (sourceIdx !== -1) {
-                                setSelectedServerIndex(-2); // Special index for WatchAnimeWorld
+                                setSelectedServerIndex(-2); // Special index for embed sources
                                 setSelectedLangCode(lang.code);
                                 setFailedServers(new Set());
                               }

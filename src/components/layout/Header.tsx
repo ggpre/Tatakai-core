@@ -32,13 +32,45 @@ export function Header() {
     checkStatus();
     // Recheck every 5 minutes
     const interval = setInterval(checkStatus, 5 * 60 * 1000);
+
     return () => clearInterval(interval);
+  }, []);
+
+  // Keyboard shortcut (Ctrl/Cmd + K) to focus and select the search input
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const isMac = navigator.platform.toLowerCase().includes('mac');
+      const hasModifier = isMac ? e.metaKey : e.ctrlKey;
+      if (hasModifier && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        // Try header input first, fall back to any global search input on the page
+        const ids = ['tatakai-header-search', 'tatakai-global-search', 'tatakai-search-mobile-input'];
+        for (const id of ids) {
+          const el = document.getElementById(id) as HTMLInputElement | null;
+          if (el) {
+            el.focus();
+            el.select();
+            return;
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
   }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      const term = searchQuery.trim();
+      try {
+        const history = localStorage.getItem('tatakai_search_history');
+        let searches: string[] = history ? JSON.parse(history) : [];
+        searches = [term, ...searches.filter(s => s !== term)].slice(0, 20);
+        localStorage.setItem('tatakai_search_history', JSON.stringify(searches));
+      } catch {}
+      navigate(`/search?q=${encodeURIComponent(term)}`);
     }
   };
 
@@ -95,11 +127,13 @@ export function Header() {
         <form onSubmit={handleSearch} className="flex items-center gap-3 bg-muted/50 border border-border/30 rounded-full px-4 py-2 hover:bg-muted transition-colors cursor-pointer group">
           <Search className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
           <input
+            id="tatakai-header-search"
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search anime..."
             className="bg-transparent text-sm text-muted-foreground placeholder:text-muted-foreground focus:outline-none focus:text-foreground w-24 sm:w-32 lg:w-48"
+            aria-label="Search anime"
           />
           <div className="hidden lg:flex gap-1 ml-4">
             <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">⌘</span>

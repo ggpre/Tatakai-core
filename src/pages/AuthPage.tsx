@@ -137,8 +137,8 @@ export default function AuthPage() {
           {/* Logo/Brand */}
           <div className="mb-10">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg">
-                <Play className="w-6 h-6 fill-primary-foreground text-primary-foreground" />
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg overflow-hidden">
+                <img src="/tatakai-logo-square.png" alt="Tatakai logo" className="w-full h-full object-cover" />
               </div>
               <h1 className="font-display text-3xl font-bold gradient-text">Tatakai</h1>
             </div>
@@ -223,6 +223,17 @@ export default function AuthPage() {
               {errors.password && (
                 <p className="text-sm text-destructive">{errors.password}</p>
               )}
+              {isLogin && (
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/reset-password')}
+                    className="text-sm text-primary hover:underline"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+              )}
             </div>
             
             <Button
@@ -258,7 +269,28 @@ export default function AuthPage() {
           {/* Decorative element */}
           <div className="mt-12 pt-8 border-t border-border/50">
             <p className="text-xs text-muted-foreground text-center">
-              By continuing, you agree to our Terms of Service and Privacy Policy.
+              By continuing, you agree to our{' '}
+              <button
+                onClick={() => navigate('/terms')}
+                className="text-primary hover:underline"
+              >
+                Terms of Service
+              </button>
+              ,{' '}
+              <button
+                onClick={() => navigate('/privacy')}
+                className="text-primary hover:underline"
+              >
+                Privacy Policy
+              </button>
+              , and{' '}
+              <button
+                onClick={() => navigate('/dmca')}
+                className="text-primary hover:underline"
+              >
+                DMCA Policy
+              </button>
+              .
             </p>
           </div>
         </div>

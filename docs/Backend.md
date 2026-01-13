@@ -188,6 +188,32 @@ Deploy your own instance of Aniwatch API on Render.
 
 The endpoints exposed by the api are listed below with examples that uses the [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API), but you can use any http library.
 
+---
+
+## Shareable / Public Playlists
+
+Playlists can be published by their owners to make them publicly accessible via a short share link. Key points:
+
+- Database columns:
+  - `share_slug` (unique): short identifier used at `/p/{share_slug}`
+  - `share_description`: optional blurb shown on the public page
+  - `embed_allowed` (boolean): whether the playlist can be embedded via iframe
+  - `is_flagged`, `flagged_by`, `flagged_reason`, `flagged_at`, `flag_count`, `admin_reviewed`: moderation metadata
+
+- Public API:
+  - `GET /api/public/playlists/{slug}` — returns playlist metadata, items (ordered), and owner profile. This endpoint uses the Supabase service role on the server to ensure consistent results and adds caching and rate limit headers.
+
+- UI behavior:
+  - Owners can toggle `public` and generate a share slug. If a share slug doesn't already exist, the UI will attempt to generate one and save it (retries on collisions).
+  - Public page reachable at `/p/{share_slug}` and supports `?embed=1` for embed-friendly layout.
+
+- Security & moderation:
+  - `share_slug` has a unique index to prevent collisions; the client retries on collision.
+  - Admins can flag or take down playlists via moderation tools; flagged playlists are tracked with moderation fields above.
+
+---
+
+
 <details>
 
 <summary>
@@ -1333,6 +1359,65 @@ console.log(data);
 ## <span id="development">👨‍💻 Development</span>
 
 Pull requests and stars are always welcome. If you encounter any bug or want to add a new feature to this api, consider creating a new [issue](https://github.com/ghoshRitesh12/aniwatch-api/issues). If you wish to contribute to this project, read the [CONTRIBUTING.md](https://github.com/ghoshRitesh12/aniwatch-api/blob/main/CONTRIBUTING.md) file.
+
+---
+
+## New: Trending, Metrics & Recommendations
+
+This repository now ships additional RPCs and endpoints useful for tracking views, computing trending scores, returning anime metrics, and serving recommendations. These can be deployed together with the API.
+
+1) get_trending_anime(p_limit, p_window, ...)
+- Improved trending RPC that computes a weighted trending score using a combination of recent view counts (with configurable window), completion rate, and favorites.
+- Returns: anime_id, views_window, views_today, views_week, views_month, total_views, favorites_count, avg_watch_duration, completion_rate, trending_score, sparkline (7-day series).
+
+2) get_anime_metrics(p_anime_id)
+- Returns aggregated per-anime metrics: total/period views, favorites count, avg watch duration (30d), completion rate (30d).
+
+3) get_recommendations_for_user(p_user_id, p_limit)
+- Returns simple co-occurrence-based recommendations (users who added A also added B). A more advanced version (`get_recommendations_for_user_improved`) can be used for item-based collaborative filtering.
+
+4) Materialized precomputed scores
+- `anime_trending_scores` table stores precomputed trending scores for fast reads.
+- `refresh_trending_scores()` writes computed results to the table. It's intended to be scheduled (pg_cron or a hosted scheduled job) to run hourly.
+
+5) Serverless endpoints
+- `GET /api/metrics/anime/{animeId}` - convenience endpoint to fetch `get_anime_metrics` server-side (intended for admin dashboards). Use the service role key for RLS bypassing if necessary.
+
+6) Operational notes
+- Use caching headers and the optional `Aniwatch-Cache-Expiry` custom header to control caching of heavy RPC responses.
+- Consider running `refresh_trending_scores()` once per hour and serving `anime_trending_scores` for UI pages to reduce load.
+
+---
+
+### Rate limiting & WAF
+- We provide a simple rate-limiter middleware used by some serverless endpoints. This is a basic per-IP token bucket and can be replaced by a Redis-backed limiter for production.
+- Example headers returned by the serverless endpoints:
+  - `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, `Retry-After` when rate limited.
+- Deploy a WAF (Cloudflare, Vercel Edge, or AWS WAF) to protect endpoints. Add rules for:
+  - Geo-based block/allowlists
+  - IP reputation/bot blocking
+  - Block suspicious payload patterns (SQLi / XSS)
+
+### Observability (Sentry + Prometheus)
+#### Sentry
+- Add these env vars:
+  - `VITE_SENTRY_DSN` (client-side DSN)
+  - `SENTRY_DSN` (server-side/service)
+  - `VITE_SENTRY_TRACES_SAMPLE_RATE` / `SENTRY_TRACES_SAMPLE_RATE` (optional)
+  - `VITE_SENTRY_ENV` / `SENTRY_ENV`
+- Client: the app initializes Sentry in `src/main.tsx` and integrates with `ErrorBoundary` and `logger` so captured errors are sent automatically.
+- Server: use `initSentryServer()` in serverless endpoints to initialize `@sentry/node` (see `src/lib/sentry.ts`).
+
+#### Prometheus-style metrics
+- A lightweight in-process collector is provided at `src/lib/metrics.ts` and an endpoint `GET /api/observability/metrics` to expose metrics in Prometheus text format (basic auth available via `METRICS_BASIC_USER` / `METRICS_BASIC_PASS`).
+- For production, prefer a Pushgateway or an exporter that pushes to Prometheus; set `PROM_PUSHGATEWAY_URL` and call `pushToGateway()` from a cron job or worker.
+- Instrumented counters include `proxy_requests_total`, `proxy_errors_total`, `metrics_requests_total`, `metrics_errors_total`, `proxy_request_duration_seconds` (histogram summary), etc.
+
+### Edge caching
+- Endpoints that return aggregated or semi-static data should use `Cache-Control` with `s-maxage` and `stale-while-revalidate` to make them CDN-friendly. See the `/api/metrics/anime/{id}` and `/api/proxy/*` endpoints for examples.
+
+
+
 
 ## <span id="contributors">✨ Contributors</span>
 

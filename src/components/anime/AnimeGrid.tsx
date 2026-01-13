@@ -71,8 +71,8 @@ export function AnimeGrid({ animes, title, icon, enablePreview = false }: AnimeG
                     {anime.name}
                   </h4>
                   <div className="flex gap-2 mt-1 text-xs text-muted-foreground">
-                    <span>SUB {anime.episodes.sub}</span>
-                    {anime.episodes.dub > 0 && <span>• DUB {anime.episodes.dub}</span>}
+                    {anime.episodes?.sub && <span>SUB {anime.episodes.sub}</span>}
+                    {anime.episodes?.dub > 0 && <span>• DUB {anime.episodes.dub}</span>}
                   </div>
                 </div>
               </div>
